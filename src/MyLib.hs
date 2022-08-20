@@ -1,4 +1,6 @@
-module MyLib (someFunc) where
+module MyLib (hello) where
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+import Prelude (IO, putStrLn)
+
+hello :: IO ()
+hello = putStrLn "Hello, from lib!"

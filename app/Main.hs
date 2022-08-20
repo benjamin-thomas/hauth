@@ -1,8 +1,10 @@
 module Main where
 
-import qualified MyLib (someFunc)
+import Prelude (IO, putStrLn)
+
+import qualified MyLib (hello)
 
 main :: IO ()
 main = do
-  putStrLn "Hello, Haskell!"
-  MyLib.someFunc
+  putStrLn "Hello, from main!"
+  MyLib.hello
