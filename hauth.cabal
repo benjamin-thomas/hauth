@@ -19,7 +19,7 @@ maintainer:         benjamin.guy.thomas@gmail.com
 -- A copyright notice.
 -- copyright:
 -- category:
-extra-source-files: CHANGELOG.md
+-- extra-source-files: CHANGELOG.md
 
 library
     ghc-options: -fplugin=NriPrelude.Plugin -threaded -rtsopts -with-rtsopts=-N
