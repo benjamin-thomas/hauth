@@ -1,7 +1,7 @@
 module Main where
 
 import qualified MyLib (hello)
-import Relude (IO, Text, putStrLn)
+import Prelude (IO, putStrLn)
 
 main :: IO ()
 main = do
