@@ -1,19 +1,34 @@
 module MyLib (hello) where
 
-import NriPrelude (Bool, Char, Float, Int, List, Maybe (Just, Nothing), Result, Text, (++), (/), (<|), (==), (|>))
-import qualified Relude (Text)
+import Data.Time (
+    NominalDiffTime,
+    UTCTime,
+    ZonedTime,
+    defaultTimeLocale,
+    diffUTCTime,
+    getCurrentTime,
+    getZonedTime,
+    iso8601DateFormat,
+    minutesToTimeZone,
+    parseTimeM,
+    utcToLocalZonedTime,
+    utcToZonedTime,
+    zonedTimeToUTC,
+ )
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
+
+import NriPrelude (Bool (True), Char, Float, Int, List, Maybe (Just, Nothing), Result, Text, (*), (++), (-), (/), (<), (<|), (==), (>), (|>))
+
+import Prelude (IO)
+
+import Data.Either (Either (Left, Right))
 
 import Result (Result (Err, Ok), withDefault)
 import Text (fromInt, isEmpty, repeat, reverse, toInt, toList, trim)
 
--- import Relude (IO, putStrLn)
--- import Prelude
-
 {-
 Pass strings to `Main.hs`:
-
     Prelude.putStrLn hello
-    Relude.putStrLn hello
  -}
 {-# DEPRECATED hello "Use hello2" #-}
 hello :: List Char
@@ -56,6 +71,7 @@ debugToStringTest =
     [ Debug.toString 42
     , Debug.toString [1, 2]
     , Debug.toString ('a', "b", 3)
+    , Debug.toString True
     ]
 
 debugLogTest :: Int
@@ -79,3 +95,65 @@ testResult =
     [ Result.withDefault 0 (Ok 123)
     , Result.withDefault 0 (Err "no")
     ]
+
+timeParserUTC :: [Char] -> Maybe UTCTime
+timeParserUTC =
+    parseTimeM
+        True
+        defaultTimeLocale
+        (iso8601DateFormat (Just "%H:%M:%S%Q%z"))
+
+timeParserZoned :: [Char] -> Maybe ZonedTime
+timeParserZoned =
+    parseTimeM
+        True
+        defaultTimeLocale
+        (iso8601DateFormat (Just "%H:%M:%S%Q%z"))
+
+testParseTimeUTC :: Maybe UTCTime
+testParseTimeUTC =
+    timeParserUTC "2022-08-21T14:00:00+0200"
+
+testParseTimeZoned :: Maybe ZonedTime
+testParseTimeZoned =
+    timeParserZoned "2022-08-21T14:00:00+0200"
+
+timeWasUTC :: UTCTime
+timeWasUTC = posixSecondsToUTCTime 1661094986
+
+timeIsUTC :: IO UTCTime
+timeIsUTC = getCurrentTime
+
+timeIsZoned :: IO ZonedTime
+timeIsZoned = getZonedTime
+
+tzTransforms :: (ZonedTime, UTCTime)
+tzTransforms =
+    let tz = minutesToTimeZone (60 * 2)
+        timeWasTz = utcToZonedTime tz timeWasUTC
+     in ( timeWasTz
+        , timeWasTz |> zonedTimeToUTC
+        )
+
+-- Time can only be compared in UTC
+timeComparison :: [Bool]
+timeComparison =
+    let tz = minutesToTimeZone (60 * 2)
+     in [ posixSecondsToUTCTime 0 < posixSecondsToUTCTime 1
+        , posixSecondsToUTCTime 1 > posixSecondsToUTCTime 0
+        , posixSecondsToUTCTime 0 == posixSecondsToUTCTime 0
+        , posixSecondsToUTCTime 0 < timeWasUTC
+        , posixSecondsToUTCTime 0 < (timeWasUTC |> utcToZonedTime tz |> zonedTimeToUTC)
+        ]
+
+timeDistance :: [Text]
+timeDistance =
+    [ Debug.toString (diffUTCTime (posixSecondsToUTCTime 1) (posixSecondsToUTCTime 0))
+    , Debug.toString (diffUTCTime (posixSecondsToUTCTime 0) (posixSecondsToUTCTime 1))
+    ] -- ["1 s","-1s"]
+
+diffTypeIs :: NominalDiffTime
+diffTypeIs = diffUTCTime (posixSecondsToUTCTime 1) (posixSecondsToUTCTime 0)
+
+mathOnDiff :: NominalDiffTime
+mathOnDiff = diffTypeIs * 2 -- 2s
