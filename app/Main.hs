@@ -1,10 +1,9 @@
 module Main where
 
-import qualified MyLib ()
-import Relude
+import qualified MyLib (hello)
+import Relude (IO, Text, putStrLn)
 
 main :: IO ()
 main = do
   putStrLn "Hello, from main!"
-
--- MyLib.hello
+  putStrLn MyLib.hello

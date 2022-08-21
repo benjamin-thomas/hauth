@@ -1,14 +1,21 @@
-module MyLib () where
+module MyLib (hello) where
 
-import NriPrelude (Bool, Char, Float, Int, Maybe (Just, Nothing), Text, (++), (/), (<|), (==), (|>))
+import NriPrelude (Bool, Char, Float, Int, List, Maybe (Just, Nothing), Text, (++), (/), (<|), (==), (|>))
+import qualified Relude (Text)
 
-import Text (fromInt, isEmpty, repeat, reverse, toInt, trim)
+import Text (fromInt, isEmpty, repeat, reverse, toInt, toList, trim)
 
 -- import Relude (IO, putStrLn)
 -- import Prelude
 
--- hello :: IO ()
--- hello = putStrLn "Hello, from lib!"
+{-
+Pass strings to `Main.hs`:
+
+    Prelude.putStrLn hello
+    Relude.putStrLn hello
+ -}
+hello :: List Char
+hello = "Hello world from lib!" |> toList
 
 floatDiv :: Float
 floatDiv = 3.14 / 2
