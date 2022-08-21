@@ -35,7 +35,6 @@ library
     --  nri-prelude v0.6.0.4->v0.6.0.6 is not compatible with recommended GHC v8.10.7 + base v4.14.3.0
     build-depends:          base ^>=4.14.3.0
                           , nri-prelude < 0.6.0.4
-                          , relude ^>= 1.1.0.0
                           , time
     hs-source-dirs:         src
     default-language:       Haskell2010
