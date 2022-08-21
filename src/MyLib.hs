@@ -16,10 +16,11 @@ import Data.Time (
     zonedTimeToUTC,
  )
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
+import Text.Regex.PCRE.Heavy (Regex, gsub, re, scan, (=~))
 
 import NriPrelude (Bool (True), Char, Float, Int, List, Maybe (Just, Nothing), Result, Text, (*), (++), (-), (/), (<), (<|), (==), (>), (|>))
 
-import Prelude (IO, Integer, subtract, ($), (.))
+import Prelude (IO, Integer, String, subtract, ($), (.))
 import qualified Prelude (Int, Integer)
 
 import Data.Either (Either (Left, Right))
@@ -210,3 +211,49 @@ alterTimeComponent =
         t3 = setL year 1900 . setL month 2 . setL day 29 $ t1 -- returns: 1900-03-01 15:16:26 UTC
         t4 = setL year 1900 . setL month 2 . setL day 30 $ t1 -- returns: 1900-03-02 15:16:26 UTC
      in (t1, t2, t3, t4)
+
+regex1 :: Regex
+regex1 = [re|^(hell.), (.+)!$|]
+
+-- I'm not sure why I have to provide extra type information here...
+-- Not necessary inside the REPL!
+--
+-- Normal usage:
+--   "hello, world!" =~ regex1 => True
+--
+-- Reverse the call order:
+--   (\x -> x =~ regex1) "hello, world!"
+--      => True
+--
+--   compare = \x -> (x :: Text) =~ regex1
+--
+--   compare "hello, world!"
+--     => True
+reCompare :: Bool
+reCompare = ("hello" :: Text) =~ regex1
+
+reCompare2 :: Bool
+reCompare2 = ("hello" :: [Char]) =~ regex1
+
+{-
+scan regex1 ("hello, world!" :: Text)
+  => [("hello, world!",["hello","world"])]
+-}
+extractFromRe :: [(Text, [Text])]
+extractFromRe = scan regex1 "hello, world!"
+
+{-
+The REPL wants the type hint in reverse order it seems...
+gsub [re|\d+|] "X" ("Remove 123 OK" :: Text)
+    => "Remove X OK"
+-}
+substituteFromRe :: Text
+substituteFromRe = gsub [re|\d+|] ("X" :: Text) "Remove 123 OK"
+
+{-
+The REPL wants the type hint in reverse order it seems...
+gsub [re|\d|] "x" ("Remove 123 OK" :: Text)
+    => "Remove xxx OK"
+-}
+substituteFromReNonGreedy :: Text
+substituteFromReNonGreedy = gsub [re|\d|] ("x" :: Text) "Remove 123 OK"
