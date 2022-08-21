@@ -1,8 +1,9 @@
 module MyLib (hello) where
 
-import NriPrelude (Bool, Char, Float, Int, List, Maybe (Just, Nothing), Text, (++), (/), (<|), (==), (|>))
+import NriPrelude (Bool, Char, Float, Int, List, Maybe (Just, Nothing), Result, Text, (++), (/), (<|), (==), (|>))
 import qualified Relude (Text)
 
+import Result (Result (Err, Ok), withDefault)
 import Text (fromInt, isEmpty, repeat, reverse, toInt, toList, trim)
 
 -- import Relude (IO, putStrLn)
@@ -68,3 +69,9 @@ printSound animal =
         Dog -> "Woof"
         _ ->
             Debug.todo "handle Fish later..."
+
+testResult :: [Int]
+testResult =
+    [ Result.withDefault 0 (Ok 123)
+    , Result.withDefault 0 (Err "no")
+    ]
