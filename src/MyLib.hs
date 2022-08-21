@@ -45,3 +45,26 @@ workflowEx :: Maybe Int -> Text
 workflowEx maybeInt = case maybeInt of
     Just n -> "YES[" ++ fromInt n ++ "]"
     Nothing -> "NO!"
+
+debugToStringTest :: [Text]
+debugToStringTest =
+    [ Debug.toString 42
+    , Debug.toString [1, 2]
+    , Debug.toString ('a', "b", 3)
+    ]
+
+debugLogTest :: Int
+debugLogTest =
+    Debug.log
+        "Do something later..."
+        3
+
+data Animal = Cat | Dog | Fish
+
+printSound :: Animal -> Text
+printSound animal =
+    case animal of
+        Cat -> "Meow"
+        Dog -> "Woof"
+        _ ->
+            Debug.todo "handle Fish later..."
