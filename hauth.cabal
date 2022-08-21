@@ -32,7 +32,11 @@ library
     -- other-extensions:
     --
     -- NOTE:
-    --  nri-prelude v0.6.0.4->v0.6.0.6 is not compatible with recommended GHC v8.10.7 + base v4.14.3.0
+    --   nri-prelude v0.6.0.4->v0.6.0.6 is not compatible with recommended GHC v8.10.7 + base v4.14.3.0
+    -- NOTE:
+    --   Mixins could be a better way to import an alternative prelude
+    --     mixins: base hiding (Prelude)
+    --           , relude (Relude as Prelude)
     build-depends:          base ^>=4.14.3.0
                           , nri-prelude < 0.6.0.4
                           , time
