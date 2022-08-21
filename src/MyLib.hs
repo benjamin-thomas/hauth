@@ -19,12 +19,16 @@ import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
 import NriPrelude (Bool (True), Char, Float, Int, List, Maybe (Just, Nothing), Result, Text, (*), (++), (-), (/), (<), (<|), (==), (>), (|>))
 
-import Prelude (IO)
+import Prelude (IO, Integer, subtract, ($), (.))
+import qualified Prelude (Int, Integer)
 
 import Data.Either (Either (Left, Right))
 
 import Result (Result (Err, Ok), withDefault)
 import Text (fromInt, isEmpty, repeat, reverse, toInt, toList, trim)
+
+import Data.Fixed (Pico)
+import Data.Time.Lens (ZonedTime, day, getL, getZonedTime, hours, minutes, modL, month, seconds, setL, year)
 
 {-
 Pass strings to `Main.hs`:
@@ -157,3 +161,52 @@ diffTypeIs = diffUTCTime (posixSecondsToUTCTime 1) (posixSecondsToUTCTime 0)
 
 mathOnDiff :: NominalDiffTime
 mathOnDiff = diffTypeIs * 2 -- 2s
+
+{-
+Integer :: *
+Defined in ‘GHC.Integer.Type’ (integer-gmp-1.0.3.0)
+
+Arbitrary precision integers. In contrast with fixed-size integral types such as Int , the Integer type represents the entire infinite range of integers.
+
+For more information about this type's representation, see the comments in its implementation.
+
+---
+
+Int :: *
+Defined in ‘GHC.Types’ (ghc-prim-0.6.1)
+
+A fixed-precision integer type with at least the range [-2^29 .. 2^29-1] .
+The exact range for a given implementation can be determined by using Prelude.minBound and
+Prelude.maxBound from the Prelude.Bounded class.
+
+---
+
+Pico
+
+resolution of 10^-12 = .000000000001
+-}
+extractTimeComponents :: (Prelude.Integer, Prelude.Int, Prelude.Int, Prelude.Int, Prelude.Int, Pico)
+extractTimeComponents =
+    let t = timeWasUTC
+     in ( getL year t
+        , getL month t
+        , getL day t
+        , getL hours t
+        , getL minutes t
+        , getL seconds t
+        )
+
+extractTimeComponentsPrint :: Text
+extractTimeComponentsPrint =
+    let t = timeWasUTC
+     in (Debug.toString t |> Debug.log)
+            extractTimeComponents
+            |> Debug.toString
+
+alterTimeComponent :: (UTCTime, UTCTime, UTCTime, UTCTime)
+alterTimeComponent =
+    let t1 = timeWasUTC
+        t2 = setL year 2000 . modL day (subtract 1) $ t1
+        t3 = setL year 1900 . setL month 2 . setL day 29 $ t1 -- returns: 1900-03-01 15:16:26 UTC
+        t4 = setL year 1900 . setL month 2 . setL day 30 $ t1 -- returns: 1900-03-02 15:16:26 UTC
+     in (t1, t2, t3, t4)
