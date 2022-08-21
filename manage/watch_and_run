@@ -1,0 +1,4 @@
+#!/bin/bash
+
+echo "rg --files | entr -c cabal run"
+exec rg --files | entr -c cabal run
