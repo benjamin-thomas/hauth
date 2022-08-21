@@ -41,7 +41,7 @@ repeatEx = repeat 3 "!"
 -- CONVERSION
 
 intStr :: Text
-intStr = fromInt 1234
+intStr = fromInt 1_234
 
 strInt :: Maybe Int
 strInt = toInt "1234"
