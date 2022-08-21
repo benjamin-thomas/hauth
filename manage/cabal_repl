@@ -1,0 +1,19 @@
+#!/usr/bin/env expect
+
+# https://stackoverflow.com/questions/61237685/haskell-ghci-reload-and-then-evaluate-last-expression
+
+# disables logging to stdout
+log_user 0
+
+spawn cabal repl
+
+# re-enables logging to stdout
+log_user 1
+
+while 1 {
+  # Pressing `€` triggers a `:reload`, then re-runs the last command via ↑↑
+  # Note that I could issue `:r` manually so at best, I'm saving 6 keystrokes here.
+  # Combined with the vscode extension "Auto-Save on Window Change", it's just perfect!
+  interact "€" {send ":reload\r\033\[A\033\[A\r"}
+  exit
+}
