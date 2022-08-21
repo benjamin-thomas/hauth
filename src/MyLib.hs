@@ -15,8 +15,12 @@ Pass strings to `Main.hs`:
     Prelude.putStrLn hello
     Relude.putStrLn hello
  -}
+{-# DEPRECATED hello "Use hello2" #-}
 hello :: List Char
 hello = "Hello world from lib!" |> toList
+
+hello2 :: List Char
+hello2 = "Hello world2 from lib!" |> toList
 
 floatDiv :: Float
 floatDiv = 3.14 / 2
