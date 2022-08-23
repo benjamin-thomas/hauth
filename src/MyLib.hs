@@ -1,5 +1,13 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module MyLib (hello) where
 
+import Data.Aeson.TH (deriveJSON)
+import Extra (someFn)
+
+import Data.Aeson (FromJSON, KeyValue ((.=)), Options (constructorTagModifier, fieldLabelModifier), ToJSON (toEncoding), Value (Null), defaultOptions, eitherDecode, encode, fromJSON, genericToEncoding, object, pairs, parseJSON, toJSON, withObject, (.:))
+import qualified Data.Aeson as Aeson (Result)
 import Data.Time (
     NominalDiffTime,
     UTCTime,
@@ -16,17 +24,18 @@ import Data.Time (
     zonedTimeToUTC,
  )
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
+import GHC.Generics (Generic)
 import Text.Regex.PCRE.Heavy (Regex, gsub, re, scan, (=~))
 
-import NriPrelude (Bool (True), Char, Float, Int, List, Maybe (Just, Nothing), Result, Text, (*), (++), (-), (/), (<), (<|), (==), (>), (|>))
+import NriPrelude (Bool (True), Char, Eq, Float, Int, List, Maybe (Just, Nothing), Result, Show, Text, (*), (++), (-), (/), (<), (<|), (==), (>), (|>))
 
-import Prelude (IO, Integer, String, subtract, ($), (.))
-import qualified Prelude (Int, Integer)
+import Prelude (Double, IO, Integer, String, drop, subtract, ($), (.), (<$>), (<*>), (<>))
+import qualified Prelude (Int, Integer, String, map)
 
 import Data.Either (Either (Left, Right))
 
 import Result (Result (Err, Ok), withDefault)
-import Text (fromInt, isEmpty, repeat, reverse, toInt, toList, trim)
+import Text (fromInt, isEmpty, repeat, reverse, toInt, toList, toLower, toUpper, trim)
 
 import Data.Fixed (Pico)
 import Data.Time.Lens (ZonedTime, day, getL, getZonedTime, hours, minutes, modL, month, seconds, setL, year)
@@ -257,3 +266,190 @@ gsub [re|\d|] "x" ("Remove 123 OK" :: Text)
 -}
 substituteFromReNonGreedy :: Text
 substituteFromReNonGreedy = gsub [re|\d|] ("x" :: Text) "Remove 123 OK"
+
+{-
+
+{
+    "id": 123,
+    "name": "Benjamin",
+    "hobbies": ["Programming", "Piano"],
+    "country": null
+}
+
+Object (fromList
+    [ ("country",Null)
+    , ("hobbies"
+    , Array [String "Programming",String "Piano"])
+    , ("id",Number 123.0)
+    , ("name",String "Benjamin")
+    ])
+
+-}
+jsonEncodeExample :: Value
+jsonEncodeExample =
+    object
+        [ "id" .= (123 :: Int)
+        , "name" .= ("Benjamin" :: Text)
+        , "hobbies" .= (["Programming", "Piano"] :: [Text])
+        , "country" .= Null
+        ]
+
+jsonDecodeExample :: Aeson.Result Int
+jsonDecodeExample =
+    let j = toJSON (1 :: Int)
+     in fromJSON j :: Aeson.Result Int -- => Success 1
+
+enc1 = encode (Just "hello" :: Maybe Text)
+enc2 = encode (Nothing :: Maybe Text)
+
+-- enc3 = encode (1, "two", 3.3) -- don't know the type name!
+
+-- START: Person example definition from the docs...
+data Person = Person
+    { name :: Text
+    , age :: Int
+    }
+    deriving (Generic, Show)
+
+instance ToJSON Person where
+    -- No need to provide a toJSON implementation.
+
+    -- For efficiency, we write a simple toEncoding implementation, as
+    -- the default version uses toJSON.
+    toEncoding = genericToEncoding defaultOptions
+
+instance FromJSON Person
+
+-- No need to provide a parseJSON implementation.
+-- END: Person example definition from the docs...
+
+enc4 = encode $ Person "Benjamin" 41 -- => "{\"name\":\"Benjamin\",\"age\":41}"
+
+dec :: Either String Person
+dec = eitherDecode enc4 -- => Right (Person {name = "Benjamin", age = 41})
+
+dec2 :: Either String Person
+dec2 = eitherDecode "{\"name\":\"Benjamin\",\"age2\":41}" -- => Left "Error in $: parsing MyLib.Person(Person) failed, key \"age\" not found"
+
+-- Provide an explicit encode/decode implementation
+data User = User
+    { ident :: Int
+    , firstName :: Text
+    , occupations :: [Text]
+    }
+    deriving (Show)
+
+instance ToJSON User where
+    toJSON (User uId fn occs) =
+        object
+            [ "id" .= uId
+            , "name" .= fn
+            , "hobbies" .= occs
+            ]
+
+{- ORMOLU_DISABLE -}
+instance FromJSON User where
+    parseJSON = withObject "User" $ \v ->
+        User <$> v .: "id"
+             <*> v .: "name"
+             <*> v .: "hobbies"
+{- ORMOLU_ENABLE -}
+
+enc5 = encode $ User 1 "Benjamin" ["Programming", "Piano"] -- => "{\"hobbies\":[\"Programming\",\"Piano\"],\"name\":\"Benjamin\",\"id\":1}
+
+dec5 :: Either String User
+dec5 =
+    let input =
+            "{\"hobbies\":[\"Programming\",\"Piano\"],\"name\":\"Benjamin\",\"id\":1}"
+     in eitherDecode input -- Right (User {ident = 1, firstName = "Benjamin", occupations = ["Programming","Piano"]})
+
+{-
+NOTE:
+    Code below will not compile and return the fellowing error:
+        'Multiple declarations of ‘abc’'
+
+data Apples  = Apples  {abc :: Int}
+data Oranges = Oranges {abc :: Int}
+-}
+
+-- Prefix all fields with the type name to prevent name clashes
+
+{-
+
+This example from the book won't compile with `TemplateHaskell` extension enabled
+I suppose the library has changed since and uses `DeriveGeneric` instead
+deriveJSON is not exported by Data.Aeson
+data Pet = Pet
+    { petID :: Int
+    , petOwnerName :: Text
+    , petName :: Text
+    }
+    deriving (Show)
+
+instance ToJSON Pet
+    $(deriveJSON defaultOptions "Pet")
+
+instance FromJSON Pet
+    $(deriveJSON defaultOptions "Pet")
+-}
+
+-- Minimal setup below, requires Generic
+data Pet = Pet
+    { petID :: Int
+    , petOwnerName :: Text
+    , petName :: Text
+    }
+    deriving (Show, Generic)
+
+instance ToJSON Pet
+
+instance FromJSON Pet
+
+enc6 = encode $ Pet 1 "John" "Kat" -- => "{\"petName\":\"Kat\",\"petID\":1,\"petOwnerName\":\"John\"}"
+
+data Coord = Coord {x :: Double, y :: Double}
+
+instance ToJSON Coord where
+    toJSON (Coord x y) = object ["x" .= x, "y" .= y]
+
+    toEncoding (Coord x y) = pairs ("x" .= x <> "y" .= y)
+
+data Coord2 = Coord2
+    { x2 :: Double
+    , y2 :: Double
+    }
+    deriving (Show, Generic)
+$(deriveJSON defaultOptions{fieldLabelModifier = someFn} ''Coord2)
+
+{- I've got troubles with some types so this will do for now
+MyLib> toJSON $ Coord2 1 2
+Object (fromList [("x2x2",Number 1.0),("y2y2",Number 2.0)])
+-}
+
+data D a
+    = Nullary
+    | Unary Int
+    | Product String Char a
+    | Record
+        { testOne :: Double
+        , testTwo :: Bool
+        , testThree :: D a
+        }
+    deriving (Eq, Show)
+
+-- $(deriveJSON defaultOptions{fieldLabelModifier = drop 4, constructorTagModifier = map toLower} ''D)
+$(deriveJSON defaultOptions{fieldLabelModifier = Prelude.drop 4} ''D)
+
+{-
+   NOTE:
+    ''D is Template Haskell syntax and means a "fully qualified name"
+
+    See page 26 for more Template Haskell transforms I didn't manage to compile (Prelude clashing with NriPrelude)
+-}
+d :: D Int
+d =
+    Record
+        { testOne = 3.14159
+        , testTwo = True
+        , testThree = Product "test" 'A' 123
+        }
