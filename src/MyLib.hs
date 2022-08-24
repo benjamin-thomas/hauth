@@ -6,7 +6,25 @@ module MyLib (hello) where
 import Data.Aeson.TH (deriveJSON)
 import Extra (someFn)
 
-import Data.Aeson (FromJSON, KeyValue ((.=)), Options (constructorTagModifier, fieldLabelModifier), ToJSON (toEncoding), Value (Null), defaultOptions, eitherDecode, encode, fromJSON, genericToEncoding, object, pairs, parseJSON, toJSON, withObject, (.:))
+import Data.Aeson (
+    FromJSON,
+    KeyValue ((.=)),
+    Options (constructorTagModifier, fieldLabelModifier),
+    ToJSON (toEncoding),
+    Value (Null),
+    defaultOptions,
+    eitherDecode,
+    encode,
+    fromJSON,
+    genericToEncoding,
+    object,
+    pairs,
+    parseJSON,
+    toJSON,
+    withObject,
+    (.:),
+ )
+
 import qualified Data.Aeson as Aeson (Result)
 import Data.Time (
     NominalDiffTime,
@@ -23,6 +41,7 @@ import Data.Time (
     utcToZonedTime,
     zonedTimeToUTC,
  )
+
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import GHC.Generics (Generic)
 import Text.Regex.PCRE.Heavy (Regex, gsub, re, scan, (=~))
