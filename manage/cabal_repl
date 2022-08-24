@@ -14,6 +14,14 @@ while 1 {
   # Pressing `€` triggers a `:reload`, then re-runs the last command via ↑↑
   # Note that I could issue `:r` manually so at best, I'm saving 6 keystrokes here.
   # Combined with the vscode extension "Auto-Save on Window Change", it's just perfect!
-  interact "€" {send ":reload\r\033\[A\033\[A\r"}
+  interact "€" {
+	send ":!clear\r"
+	send ":reload\r"
+
+	send "\033\[A"
+	send "\033\[A"
+	send "\033\[A"
+	send "\r"
+  }
   exit
 }
