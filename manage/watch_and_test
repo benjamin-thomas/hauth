@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Source: https://github.com/hspec/hspec/issues/184
+# save the flags to your cabal.project.local
+# cabal configure --enable-tests --test-show-details=streaming --test-option=--color
+
+echo "rg --files | entr -c cabal test"
+exec rg --files | entr -c cabal test
+
+# Or:
+# cabal repl lib-test
+# :main
+# :reload
