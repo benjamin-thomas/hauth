@@ -1,30 +1,17 @@
-cabal-version:      2.4
-name:               hauth
-version:            0.1.0.0
+cabal-version:              2.4
+name:                       hauth
+version:                    0.1.0.0
 
 
 common ghc-options
-    ghc-options:      -Wall
-                      -freverse-errors
+    ghc-options:           -Wall
+                           -freverse-errors
+                           -fwrite-ide-info
+                           -hiedir=.hie
 
 library
-    -- import:           ghc-options
-    exposed-modules:  MyLib
-
-    ghc-options:       -Wall
-                       -Wcompat
-                       -Widentities
-                       -Wincomplete-uni-patterns
-                       -Wincomplete-record-updates
-                       -Wredundant-constraints
-                       -fhide-source-paths
-                       -Wmissing-export-lists
-                       -Wpartial-fields
-                       -Wmissing-deriving-strategies
-                       -Werror=missing-deriving-strategies
-                       -Wunused-packages
-                       -fwrite-ide-info
-                       -hiedir=.hie
+    import:                 ghc-options
+    exposed-modules:        MyLib
 
     build-depends:          base ^>=4.14.3.0
                           , time
@@ -36,10 +23,10 @@ library
 
     hs-source-dirs:         src
     default-language:       Haskell2010
-    default-extensions:
-                            OverloadedStrings
-                            , NumericUnderscores
-                            , QuasiQuotes
+
+    default-extensions:     OverloadedStrings
+                          , NumericUnderscores
+                          , QuasiQuotes
 
 executable hauth
     main-is:                Main.hs
@@ -49,5 +36,3 @@ executable hauth
 
     hs-source-dirs:         app
     default-language:       Haskell2010
-    default-extensions:
-                            OverloadedStrings
