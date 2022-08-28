@@ -8,18 +8,18 @@ import Domain.Authentication (
     mkEmail,
     mkPassword,
  )
-import Domain.Validation (lengthBetween, regexMatch, validate)
+import Domain.Validation (lengthLessThan, regexMatch, validate)
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import Text.Regex.PCRE.Heavy (re)
 
 spec :: Spec
 spec =
     describe "Domain.Validation" $ do
-        it "checks input with `lengthBetween`" $ do
-            lengthBetween 1 5 "err" "12345" `shouldBe` (Nothing :: Maybe String)
-            lengthBetween 1 3 "err" "12345" `shouldBe` (Just "err" :: Maybe String)
-            lengthBetween 1 5 PasswordTooShortError "12345" `shouldBe` Nothing
-            lengthBetween 1 3 PasswordTooShortError "12345" `shouldBe` Just PasswordTooShortError
+        it "checks input with `lengthLessThan`" $ do
+            lengthLessThan 5 "err" "12345" `shouldBe` (Nothing :: Maybe String)
+            lengthLessThan 5 "err" "1234" `shouldBe` (Just "err" :: Maybe String)
+            lengthLessThan 5 PasswordTooShortError "12345" `shouldBe` Nothing
+            lengthLessThan 5 PasswordTooShortError "1234" `shouldBe` Just PasswordTooShortError
         it "checks an email address is valid" $ do
             regexMatch [re|@|] InvalidEmailErr "hello" `shouldBe` Just InvalidEmailErr
             regexMatch [re|@|] InvalidEmailErr "hello@example.com" `shouldBe` Nothing

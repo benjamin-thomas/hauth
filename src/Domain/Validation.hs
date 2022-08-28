@@ -1,4 +1,4 @@
-module Domain.Validation where
+module Domain.Validation (validate, regexMatch, lengthLessThan) where
 
 import Data.Maybe (maybeToList)
 import Data.Text as T (Text, length)
@@ -16,15 +16,15 @@ validate constructor validations val =
         [] -> Right $ constructor val
         errs -> Left errs
 
-rangeBetween :: Int -> Int -> error -> Validation error Int
-rangeBetween minRange maxRange error_ val =
-    if val >= minRange && val <= maxRange
-        then Nothing
-        else Just error_
+-- rangeBetween :: Int -> Int -> error -> Validation error Int
+-- rangeBetween minRange maxRange error_ val =
+--     if val >= minRange && val <= maxRange
+--         then Nothing
+--         else Just error_
 
-lengthBetween :: Int -> Int -> error -> Validation error Text
-lengthBetween minLen maxLen error_ val =
-    rangeBetween minLen maxLen error_ (T.length val)
+-- lengthBetween :: Int -> Int -> error -> Validation error Text
+-- lengthBetween minLen maxLen error_ val =
+--     rangeBetween minLen maxLen error_ (T.length val)
 
 lengthLessThan :: Int -> error -> Validation error Text
 lengthLessThan n error_ val =
