@@ -56,4 +56,4 @@ test-suite test
 
     main-is:                Main.hs
 
-    -- other-modules:       OtherModule
+    other-modules:          Domain.ValidationSpec
