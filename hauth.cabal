@@ -50,8 +50,11 @@ test-suite test
                           , hspec
                           , template-haskell
                           , raw-strings-qq
+                          , pcre-heavy
+                          , text
 
-    default-extensions:     NumericUnderscores
+    default-extensions:     OverloadedStrings
+                          , NumericUnderscores
                           , QuasiQuotes
 
     main-is:                Main.hs
