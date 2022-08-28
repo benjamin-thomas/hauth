@@ -1,0 +1,11 @@
+#!/bin/bash
+
+echo "$(date): Will reload the REP on next file change..."
+
+while true; do
+    exec rg --files | entr -p ./manage/utils/reload_repl "$1"
+
+    # Watcher may crash if files have been renamed for instance.
+    echo "$(date): Reloading watcher..."
+    sleep 1
+done

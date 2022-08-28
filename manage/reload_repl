@@ -1,4 +1,0 @@
-#!/bin/bash
-
-echo "$(date): Will reload the REP on next file change..."
-exec rg --files | entr -p bash -c 'echo "$(date): reloading the REPL..." ; tmux send-keys -t "hauth:0" ":!clear" Enter && tmux send-keys -t "hauth:0" ":reload" Enter && tmux send-keys -t "hauth:0" ":main" Enter'
