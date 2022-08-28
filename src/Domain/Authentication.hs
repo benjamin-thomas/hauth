@@ -7,7 +7,7 @@ module Domain.Authentication (
 ) where
 
 import Data.Text (Text)
-import Domain.Validation (lengthBetween, regexMatch, validate)
+import Domain.Validation (lengthLessThan, regexMatch, validate)
 import Text.Regex.PCRE.Heavy (re)
 
 data Auth = Auth
@@ -59,7 +59,7 @@ mkPassword :: Text -> Either [PasswordValidationError] Password
 mkPassword =
     validate
         Password
-        [ lengthBetween 10 500 PasswordTooShortError
+        [ lengthLessThan 10 PasswordTooShortError
         , regexMatch [re|\d|] PasswordMustContainNumberError
         , regexMatch [re|[a-z]|] PasswordMustContainLowerCaseError
         , regexMatch [re|[A-Z]|] PasswordMustContainUpperCaseError

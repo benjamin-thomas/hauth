@@ -26,6 +26,12 @@ lengthBetween :: Int -> Int -> error -> Validation error Text
 lengthBetween minLen maxLen error_ val =
     rangeBetween minLen maxLen error_ (T.length val)
 
+lengthLessThan :: Int -> error -> Validation error Text
+lengthLessThan n error_ val =
+    if T.length val < n
+        then Just error_
+        else Nothing
+
 regexMatch :: Regex -> error -> Validation error Text
 regexMatch regex error_ val =
     if val =~ regex
