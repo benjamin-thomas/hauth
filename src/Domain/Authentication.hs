@@ -68,19 +68,20 @@ mkPassword =
 
 -- TEMP: I'm not sure where the code below should go yet
 
+-- RUNTIME AUTHENTICATION
+
 type VerificationCode = Text
+
+data EmailVerificationError
+    = InvalidEmailVerificationCodeError
+    deriving (Show, Eq)
 
 class Monad m => AuthRepo m where
     addAuth :: Auth -> m (Either RegistrationError VerificationCode)
+    setEmailAsVerified :: VerificationCode -> m (Either EmailVerificationError ())
 
 class Monad m => EmailVerificationNotif m where
     notifyEmailVerification :: Email -> VerificationCode -> m ()
-
-register :: (AuthRepo m, EmailVerificationNotif m) => Auth -> m (Either RegistrationError ())
-register auth = runExceptT $ do
-    vCode <- ExceptT $ addAuth auth
-    let email = authEmail auth
-    lift $ notifyEmailVerification email vCode
 
 -- TEMP IMPLEMENTATIONS
 
@@ -88,6 +89,20 @@ instance AuthRepo IO where
     addAuth (Auth email _pass) = do
         putStrLn $ "adding auth: " <> unpack (rawEmail email)
         return $ Right "fake verification code"
+    setEmailAsVerified _vCode = do
+        return $ Left InvalidEmailVerificationCodeError
+
+register :: (AuthRepo m, EmailVerificationNotif m) => Auth -> m (Either RegistrationError ())
+register auth = runExceptT $ do
+    vCode <- ExceptT $ addAuth auth
+    let email = authEmail auth
+    lift $ notifyEmailVerification email vCode
+
+-- verifyCode :: AuthRepo m => VerificationCode -> m (Either EmailVerificationError ())
+-- verifyCode = setEmailAsVerified
+
+verifyEmail :: AuthRepo m => VerificationCode -> m (Either EmailVerificationError ())
+verifyEmail = setEmailAsVerified
 
 instance EmailVerificationNotif IO where
     notifyEmailVerification email vCode =
@@ -99,10 +114,12 @@ Testing temporary impls in the REPL
 cabal repl>:l Domain.Authentication
 cabal repl>:l ./src/Domain/Authentication.hs
 
+-- copy/paste below
 let Right email = mkEmail "user@example.com"
 let Right password = mkPassword "123456789Ab"
 let auth = Auth email password
 register auth
+verifyEmail $ rawEmail email
 
 *Domain.Authentication> let Right email = mkEmail "user@example.com"
 *Domain.Authentication> let Right password = mkPassword "123456789Ab"
@@ -111,5 +128,12 @@ register auth
 adding auth: user@example.com
 Notify user@example.com - fake verification code
 Right ()
+
+-- Not implemented yet
+*Domain.Authentication> verifyEmail "user@example.com"
+Left InvalidEmailVerificationCodeError
+
+*Domain.Authentication> verifyEmail $ rawEmail email
+Left InvalidEmailVerificationCodeError
 
 -}
