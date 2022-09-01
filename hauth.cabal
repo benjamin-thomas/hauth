@@ -53,6 +53,7 @@ test-suite test
                           , raw-strings-qq
                           , pcre-heavy
                           , text
+                          , mtl
 
     default-extensions:     OverloadedStrings
                           , NumericUnderscores

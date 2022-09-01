@@ -7,6 +7,7 @@ import Domain.Authentication (
     PasswordValidationError (PasswordMustContainLowerCaseError, PasswordMustContainNumberError, PasswordMustContainUpperCaseError, PasswordTooShortError),
     mkEmail,
     mkPassword,
+    rawPassword,
  )
 import Domain.Validation (lengthLessThan, regexMatch, validate)
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
@@ -51,7 +52,6 @@ spec =
                             , PasswordMustContainUpperCaseError
                             ]
                 it "will accept a valid password" $ do
-                    let validInput = "123456789aA"
-                    case mkPassword validInput of
-                        Left err -> expectationFailure ("The password '" ++ unpack validInput ++ "' should have passed: " ++ show err)
-                        Right _pw -> return ()
+                    let allErrors = [PasswordTooShortError, PasswordMustContainNumberError, PasswordMustContainLowerCaseError, PasswordMustContainUpperCaseError]
+                    (rawPassword <$> mkPassword "") `shouldBe` Left allErrors
+                    (rawPassword <$> mkPassword "123456789Ab") `shouldBe` Right "123456789Ab"

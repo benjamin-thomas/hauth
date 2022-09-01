@@ -1,6 +1,7 @@
 module Domain.Authentication (
     mkEmail,
     mkPassword,
+    rawPassword,
     Email (Email),
     EmailValidationError (..),
     PasswordValidationError (..),
