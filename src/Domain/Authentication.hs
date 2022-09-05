@@ -7,7 +7,7 @@ module Domain.Authentication (
     PasswordValidationError (..),
 ) where
 
-import Control.Monad.Except (ExceptT (ExceptT), MonadTrans (lift), runExceptT)
+import Control.Monad.Except (ExceptT (ExceptT), MonadError (throwError), MonadTrans (lift), runExceptT)
 import Data.Text (Text, unpack)
 import Domain.Validation (lengthLessThan, regexMatch, validate)
 import Text.Regex.PCRE.Heavy (re)
@@ -80,9 +80,14 @@ data EmailVerificationError
 class Monad m => AuthRepo m where
     addAuth :: Auth -> m (Either RegistrationError VerificationCode)
     setEmailAsVerified :: VerificationCode -> m (Either EmailVerificationError ())
+    findUserByAuth :: Auth -> m (Maybe (UserId, Bool))
 
 class Monad m => EmailVerificationNotif m where
     notifyEmailVerification :: Email -> VerificationCode -> m ()
+
+class Monad m => SessionRepo m where
+    newSession :: UserId -> m SessionId
+    findUserIdBySessionId :: SessionId -> m (Maybe UserId)
 
 -- TEMP IMPLEMENTATIONS
 
@@ -138,3 +143,25 @@ Left InvalidEmailVerificationCodeError
 Left InvalidEmailVerificationCodeError
 
 -}
+
+type UserId = Int
+
+-- newtype UserId = UserId Int
+
+type SessionId = Text
+
+data LoginError
+    = InvalidCredentialsError
+    | EmailNotVerifiedError
+    deriving (Show, Eq)
+
+login :: (AuthRepo m, SessionRepo m) => Auth -> m (Either LoginError SessionId)
+login auth = runExceptT $ do
+    result <- lift $ findUserByAuth auth
+    case result of
+        Nothing -> throwError InvalidCredentialsError
+        Just (_, False) -> throwError EmailNotVerifiedError
+        Just (uId, _) -> lift $ newSession uId
+
+resolveSessionId :: SessionRepo m => SessionId -> m (Maybe UserId)
+resolveSessionId = findUserIdBySessionId
