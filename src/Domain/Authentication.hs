@@ -77,15 +77,15 @@ data EmailVerificationError
     = InvalidEmailVerificationCodeError
     deriving (Show, Eq)
 
-class Monad m => AuthRepo m where
+class (Monad m) => AuthRepo m where
     addAuth :: Auth -> m (Either RegistrationError VerificationCode)
     setEmailAsVerified :: VerificationCode -> m (Either EmailVerificationError ())
     findUserByAuth :: Auth -> m (Maybe (UserId, Bool))
 
-class Monad m => EmailVerificationNotif m where
+class (Monad m) => EmailVerificationNotif m where
     notifyEmailVerification :: Email -> VerificationCode -> m ()
 
-class Monad m => SessionRepo m where
+class (Monad m) => SessionRepo m where
     newSession :: UserId -> m SessionId
     findUserIdBySessionId :: SessionId -> m (Maybe UserId)
 
@@ -107,7 +107,7 @@ register auth = runExceptT $ do
 -- verifyCode :: AuthRepo m => VerificationCode -> m (Either EmailVerificationError ())
 -- verifyCode = setEmailAsVerified
 
-verifyEmail :: AuthRepo m => VerificationCode -> m (Either EmailVerificationError ())
+verifyEmail :: (AuthRepo m) => VerificationCode -> m (Either EmailVerificationError ())
 verifyEmail = setEmailAsVerified
 
 instance EmailVerificationNotif IO where
@@ -127,19 +127,19 @@ let auth = Auth email password
 register auth
 verifyEmail $ rawEmail email
 
-*Domain.Authentication> let Right email = mkEmail "user@example.com"
-*Domain.Authentication> let Right password = mkPassword "123456789Ab"
-*Domain.Authentication> let auth = Auth email password
-*Domain.Authentication> register auth
+\*Domain.Authentication> let Right email = mkEmail "user@example.com"
+\*Domain.Authentication> let Right password = mkPassword "123456789Ab"
+\*Domain.Authentication> let auth = Auth email password
+\*Domain.Authentication> register auth
 adding auth: user@example.com
 Notify user@example.com - fake verification code
 Right ()
 
 -- Not implemented yet
-*Domain.Authentication> verifyEmail "user@example.com"
+\*Domain.Authentication> verifyEmail "user@example.com"
 Left InvalidEmailVerificationCodeError
 
-*Domain.Authentication> verifyEmail $ rawEmail email
+\*Domain.Authentication> verifyEmail $ rawEmail email
 Left InvalidEmailVerificationCodeError
 
 -}
@@ -163,5 +163,5 @@ login auth = runExceptT $ do
         Just (_, False) -> throwError EmailNotVerifiedError
         Just (uId, _) -> lift $ newSession uId
 
-resolveSessionId :: SessionRepo m => SessionId -> m (Maybe UserId)
+resolveSessionId :: (SessionRepo m) => SessionId -> m (Maybe UserId)
 resolveSessionId = findUserIdBySessionId

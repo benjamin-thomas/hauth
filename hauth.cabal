@@ -13,7 +13,7 @@ common ghc-options
 executable hauth
     main-is:                Main.hs
 
-    build-depends:          base ^>=4.14.3.0
+    build-depends:          base ^>=4.17.2.0
                           , hauth
 
     hs-source-dirs:         app
@@ -23,8 +23,10 @@ executable hauth
 library
     import:                 ghc-options
     exposed-modules:        MyLib
+    other-modules:          Domain.Authentication
+                          , Domain.Validation
 
-    build-depends:          base ^>=4.14.3.0
+    build-depends:          base ^>=4.17.2.0
                           , time
                           , time-lens
                           , pcre-heavy
@@ -47,7 +49,7 @@ test-suite test
     default-language:       Haskell2010
     hs-source-dirs:         test, src
 
-    build-depends:          base ^>=4.14.3.0
+    build-depends:          base ^>=4.17.2.0
                           , hspec
                           , template-haskell
                           , raw-strings-qq
