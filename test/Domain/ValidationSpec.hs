@@ -1,6 +1,5 @@
 module Domain.ValidationSpec (spec) where
 
-import Data.Text (unpack)
 import Domain.Authentication (
     Email (Email),
     EmailValidationError (InvalidEmailErr),
@@ -10,7 +9,7 @@ import Domain.Authentication (
     rawPassword,
  )
 import Domain.Validation (lengthLessThan, regexMatch, validate)
-import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
+import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.Regex.PCRE.Heavy (re)
 
 spec :: Spec

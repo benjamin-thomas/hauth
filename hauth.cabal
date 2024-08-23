@@ -22,9 +22,9 @@ executable hauth
 
 library
     import:                 ghc-options
+
+    -- NOTE: you probably want to access `other-modules` via the test-suite stanza instead.
     exposed-modules:        MyLib
-    other-modules:          Domain.Authentication
-                          , Domain.Validation
 
     build-depends:          base ^>=4.17.2.0
                           , time
@@ -64,3 +64,5 @@ test-suite test
     main-is:                Main.hs
 
     other-modules:          Domain.ValidationSpec
+                          , Domain.Authentication
+                          , Domain.Validation
