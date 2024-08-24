@@ -15,8 +15,8 @@ while 1 {
   # Note that I could issue `:r` manually so at best, I'm saving 6 keystrokes here.
   # Combined with the vscode extension "Auto-Save on Window Change", it's just perfect!
   interact "€" {
-	send ":!clear\r"
 	send ":reload\r"
+	send ":!clear\r"
 
 	send "\033\[A"
 	send "\033\[A"
