@@ -61,6 +61,7 @@ test-suite test
                           , pcre-heavy
                           , text
                           , mtl
+                          , bytestring
 
     default-extensions:     OverloadedStrings
                           , NumericUnderscores
@@ -72,3 +73,4 @@ test-suite test
                           , Domain.Authentication
                           , Domain.Validation
                           , TimeSpec
+                          , RegexSpec
