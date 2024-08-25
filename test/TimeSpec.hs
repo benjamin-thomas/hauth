@@ -1,22 +1,28 @@
 module TimeSpec (spec) where
 
 import Data.Time (
+    NominalDiffTime,
     TimeLocale (..),
-    UTCTime (UTCTime),
+    UTCTime,
     ZonedTime,
     defaultTimeLocale,
+    diffUTCTime,
     formatTime,
     fromGregorian,
     hoursToTimeZone,
     parseTimeM,
     utcToZonedTime,
+    zonedTimeToUTC,
  )
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
+import Control.Applicative (liftA3)
+import Data.Time.Clock (UTCTime (..))
 import Data.Time.Format.ISO8601 (
     ISO8601 (iso8601Format),
     formatShow,
  )
+import Data.Time.Lens (day, getL, modL, month, setL, year)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 -- rg --files | entr -c cabal test --test-options=--match=/Time/
@@ -183,3 +189,30 @@ spec = describe "Time" $ do
         "Thu Jan  1 00:00:00 UTC 1970" `shouldBe` formatTime defaultTimeLocale "%c" epochUtc
         "jeu.  1 janv 1970 00:00:00 UTC" `shouldBe` formatTime frenchTimeLocale "%c" epochUtc
         "jeu.  1 janv 1970 02:00:00 +0200" `shouldBe` formatTime frenchTimeLocale "%c" epochFr
+
+    it "compares times (only UTC)" $ do
+        let a = UTCTime (fromGregorian 1970 1 1) 0
+        let b = UTCTime (fromGregorian 1970 1 2) 0
+        let epochFr = utcToZonedTime (hoursToTimeZone 2) (posixSecondsToUTCTime 0) :: ZonedTime
+        a < b `shouldBe` True
+        zonedTimeToUTC epochFr == a `shouldBe` True
+        diffUTCTime a b `shouldBe` -86400
+        diffUTCTime b a `shouldBe` (86400 :: NominalDiffTime) -- seconds
+    it "can read or modify time components via lens" $ do
+        let almostNextDayUtc = posixSecondsToUTCTime 86300 :: UTCTime
+        let almostNextDayFr = utcToZonedTime (hoursToTimeZone 2) almostNextDayUtc :: ZonedTime
+        "1970-01-01T23:58:20Z" `shouldBe` formatShow iso8601Format almostNextDayUtc
+        "1970-01-02T01:58:20+02:00" `shouldBe` formatShow iso8601Format almostNextDayFr
+        "Thursday" `shouldBe` formatTime defaultTimeLocale "%A" almostNextDayUtc
+        "Friday" `shouldBe` formatTime defaultTimeLocale "%A" almostNextDayFr
+        getL day almostNextDayUtc `shouldBe` 1
+        getL day almostNextDayFr `shouldBe` 2
+        (getL year almostNextDayFr, getL month almostNextDayFr, getL day almostNextDayFr) `shouldBe` (1970, 1, 2)
+        -- let tup3 f g h x = (f x, g x, h x)
+        -- let tup3 a b c f = liftA3 (,,) a b c f
+        liftA3 (,,) (getL year) (getL month) (getL day) almostNextDayUtc `shouldBe` (1970, 1, 1)
+        liftA3 (,,) (getL year) (getL month) (getL day) almostNextDayFr `shouldBe` (1970, 1, 2)
+        let newDate = setL month 12 . modL day (+ 30) $ UTCTime (fromGregorian 1970 1 1) 0
+        "1970-12-31T00:00:00Z" `shouldBe` formatShow iso8601Format newDate
+        let newDate2 = setL month 12 . modL day (+ 31) $ UTCTime (fromGregorian 1970 1 1) 0
+        "1970-12-01T00:00:00Z" `shouldBe` formatShow iso8601Format newDate2 -- loops back to 1st day of month
