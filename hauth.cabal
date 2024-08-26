@@ -63,10 +63,14 @@ test-suite test
                           , mtl
                           , bytestring
                           , aeson
+                          , vector
+                          , containers
 
     default-extensions:     OverloadedStrings
                           , NumericUnderscores
                           , QuasiQuotes
+                          , TemplateHaskell
+                          , DeriveGeneric
 
     main-is:                Main.hs
 
