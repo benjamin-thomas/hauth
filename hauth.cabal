@@ -10,7 +10,17 @@ common ghc-options
                            -hiedir=.hie
 
 
+executable exceptional
+    import:                 ghc-options
+    main-is:                Main.hs
+    build-depends:          base ^>=4.17.2.0
+                          , hauth
+
+    hs-source-dirs:         other/exceptional
+    default-language:       Haskell2010
+
 executable hauth
+    import:                 ghc-options
     main-is:                Main.hs
 
     build-depends:          base ^>=4.17.2.0
