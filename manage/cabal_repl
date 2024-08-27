@@ -5,7 +5,13 @@
 # disables logging to stdout
 log_user 0
 
-spawn cabal repl
+# Accepts on optional project name
+set project [lindex $argv 0];
+if {$project == ""} {
+  spawn cabal repl
+} else {
+  spawn cabal repl $project
+}
 
 # re-enables logging to stdout
 log_user 1
