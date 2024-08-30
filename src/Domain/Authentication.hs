@@ -1,14 +1,32 @@
 module Domain.Authentication (
+    -- * Types
+    Auth (..),
+    Email,
     mkEmail,
+    Password,
     mkPassword,
     rawPassword,
-    Email (Email),
+    UserId,
+    SessionId,
     EmailValidationError (..),
     PasswordValidationError (..),
+    EmailVerificationError (..),
+
+    -- * Ports
+    AuthRepo (..),
+    SessionRepo (..),
+
+    -- * Use cases
+    register,
+    verifyEmail,
+    login,
+    resolveSessionId,
+    getUser,
 ) where
 
 import Control.Monad.Except (ExceptT (ExceptT), MonadError (throwError), MonadTrans (lift), runExceptT)
-import Data.Text (Text, unpack)
+import Data.Text (Text)
+import qualified Data.Text.IO as TIO
 import Domain.Validation (lengthGreaterThan, regexMatch, validate)
 import Text.Regex.PCRE.Heavy (re)
 
@@ -95,7 +113,11 @@ data EmailVerificationError
 class (Monad m) => AuthRepo m where
     addAuth :: Auth -> m (Either RegistrationError VerificationCode)
     setEmailAsVerified :: VerificationCode -> m (Either EmailVerificationError ())
-    findUserByAuth :: Auth -> m (Maybe (UserId, Bool))
+    findUserByAuth :: Auth -> m (Maybe (UserId, Bool)) -- Bool says if the email has been verified
+    findEmailFromUserId :: UserId -> m (Maybe Email)
+
+getUser :: (AuthRepo m) => UserId -> m (Maybe Email)
+getUser = findEmailFromUserId
 
 class (Monad m) => EmailVerificationNotif m where
     notifyEmailVerification :: Email -> VerificationCode -> m ()
@@ -104,20 +126,31 @@ class (Monad m) => SessionRepo m where
     newSession :: UserId -> m SessionId
     findUserIdBySessionId :: SessionId -> m (Maybe UserId)
 
--- TEMP IMPLEMENTATIONS
+{-
+Using `ExceptT` allows us to short circuit in case `addAuth` returns a `Left`.
+`runExceptT` converts an `ExceptT` int an `Either`.
 
-instance AuthRepo IO where
-    addAuth (Auth email _pass) = do
-        putStrLn $ "adding auth: " <> unpack (rawEmail email)
-        return $ Right "fake verification code"
-    setEmailAsVerified _vCode = do
-        return $ Left InvalidEmailVerificationCodeError
-
+`ExceptT` comes from the `mtl` package.
+ -}
 register :: (AuthRepo m, EmailVerificationNotif m) => Auth -> m (Either RegistrationError ())
 register auth = runExceptT $ do
     vCode <- ExceptT $ addAuth auth
     let email = authEmail auth
     lift $ notifyEmailVerification email vCode
+
+-- TEMP IMPLEMENTATIONS
+
+instance AuthRepo IO where
+    addAuth (Auth email _pass) = do
+        TIO.putStrLn $ "adding auth: " <> rawEmail email
+        pure $ Right "fake verification code"
+    setEmailAsVerified _vCode = do
+        pure $ Left InvalidEmailVerificationCodeError
+
+fakeAuth =
+    let Right email = mkEmail "user@example.com"
+        Right password = mkPassword "123456789Ab"
+     in Auth email password
 
 -- verifyCode :: AuthRepo m => VerificationCode -> m (Either EmailVerificationError ())
 -- verifyCode = setEmailAsVerified
@@ -127,7 +160,7 @@ verifyEmail = setEmailAsVerified
 
 instance EmailVerificationNotif IO where
     notifyEmailVerification email vCode =
-        putStrLn $ "Notify " <> unpack (rawEmail email) <> " - " <> unpack vCode
+        TIO.putStrLn $ "Notify " <> rawEmail email <> " - " <> vCode
 
 {-
 Testing temporary impls in the REPL
@@ -159,11 +192,11 @@ Left InvalidEmailVerificationCodeError
 
 -}
 
-type UserId = Int
+newtype UserId = UserId Int
 
 -- newtype UserId = UserId Int
 
-type SessionId = Text
+newtype SessionId = SessionId Text
 
 data LoginError
     = InvalidCredentialsError
