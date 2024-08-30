@@ -9,7 +9,7 @@ module Domain.Authentication (
 
 import Control.Monad.Except (ExceptT (ExceptT), MonadError (throwError), MonadTrans (lift), runExceptT)
 import Data.Text (Text, unpack)
-import Domain.Validation (lengthLessThan, regexMatch, validate)
+import Domain.Validation (lengthGreaterThan, regexMatch, validate)
 import Text.Regex.PCRE.Heavy (re)
 
 data Auth = Auth
@@ -42,11 +42,19 @@ newtype Email = Email {emailRaw :: Text} deriving (Show, Eq)
 rawEmail :: Email -> Text
 rawEmail = emailRaw
 
+{- | Public constructor for the internal `Email` type. AKA a "smart constructor".
+>>> mkEmail "bad@input"
+Left [InvalidEmailErr]
+
+>>> mkEmail "user@example.com"
+Right (Email {emailRaw = "user@example.com"})
+-}
 mkEmail :: Text -> Either [EmailValidationError] Email
 mkEmail =
     validate
         Email
-        -- Better to let in a possibly wrong email address, rather than block a possibly correct email address
+        -- Better to let in a possibly wrong email address, rather than block a
+        -- possibly correct email address
         [ regexMatch [re|@.+\..+|] InvalidEmailErr
         ]
 
@@ -57,11 +65,18 @@ newtype Password = Password {passwordRaw :: Text} deriving (Show, Eq)
 rawPassword :: Password -> Text
 rawPassword = passwordRaw
 
+{-
+>>> mkPassword "abc"
+Left [PasswordTooShortError,PasswordMustContainNumberError,PasswordMustContainUpperCaseError]
+
+>>> mkPassword "123456789Ab"
+Right (Password {passwordRaw = "123456789Ab"})
+ -}
 mkPassword :: Text -> Either [PasswordValidationError] Password
 mkPassword =
     validate
         Password
-        [ lengthLessThan 10 PasswordTooShortError
+        [ lengthGreaterThan 10 PasswordTooShortError
         , regexMatch [re|\d|] PasswordMustContainNumberError
         , regexMatch [re|[a-z]|] PasswordMustContainLowerCaseError
         , regexMatch [re|[A-Z]|] PasswordMustContainUpperCaseError

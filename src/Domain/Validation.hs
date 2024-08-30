@@ -1,39 +1,82 @@
-module Domain.Validation (validate, regexMatch, lengthLessThan) where
+module Domain.Validation (
+    validate,
+    regexMatch,
+    lengthGreaterThan,
+    lengthBetween,
+    rangeBetween,
+) where
 
-import Data.Maybe (maybeToList)
-import Data.Text as T (Text, length)
+import Data.Maybe (mapMaybe)
+import Data.Text (Text)
+import qualified Data.Text as T
 import Text.Regex.PCRE.Heavy (Regex, (=~))
 
 {-
-`Validation` is a synonym for function that receives any input `a` and returns
-a `Maybe` of any `error` message, otherwise `Nothing` if the input is valid.
+`Validation` is a synonym for function that:
+ Receives a raw input and maybe returns an error.
 -}
-type Validation err a = a -> Maybe err
+type Validation err raw =
+    raw -> Maybe err
 
-validate :: (a -> b) -> [Validation err a] -> a -> Either [err] b
+-- Original book version below. Simplified a bit further down.
+-- validate :: (raw -> valid) -> [Validation err raw] -> raw -> Either [err] valid
+-- validate constructor validations val =
+--     case concatMap (\f -> maybeToList $ f val) validations of
+--         [] -> Right $ constructor val
+--         errs -> Left errs
+
+{-
+
+The following expression was condensed:
+(\f -> f val)
+(\f -> f $ val)
+($ val)
+
+>>> validate id [lengthLessThan 5 "nope"] "pa$$"
+Left ["nope"]
+
+>>> validate id [lengthLessThan 5 "nope"] "pa$$word"
+Right "pa$$word"
+ -}
+validate :: (raw -> valid) -> [Validation err raw] -> raw -> Either [err] valid
 validate constructor validations val =
-    case concatMap (\f -> maybeToList $ f val) validations of
-        [] -> Right $ constructor val
+    case mapMaybe ($ val) validations of
+        [] -> Right (constructor val)
         errs -> Left errs
 
--- rangeBetween :: Int -> Int -> error -> Validation error Int
--- rangeBetween minRange maxRange error_ val =
---     if val >= minRange && val <= maxRange
---         then Nothing
---         else Just error_
+rangeBetween :: (Ord n) => n -> n -> err -> Validation err n
+rangeBetween minRange maxRange err val =
+    if val >= minRange && val <= maxRange
+        then Nothing
+        else Just err
 
--- lengthBetween :: Int -> Int -> error -> Validation error Text
--- lengthBetween minLen maxLen error_ val =
---     rangeBetween minLen maxLen error_ (T.length val)
+{- The book uses the MonoFoldable type class (from the mono-traversable
+package), to make the last argument `val` generic.
 
-lengthLessThan :: Int -> err -> Validation err Text
-lengthLessThan n error_ val =
-    if T.length val < n
-        then Just error_
-        else Nothing
+This would allow the function to work over non-Text types, such as Set, List or
+Map, etc. (since they provide a `length` method).
+
+I'll add this later if necessary.
+ -}
+lengthBetween :: Int -> Int -> err -> Validation err Text
+lengthBetween minLen maxLen err val =
+    rangeBetween minLen maxLen err (T.length val)
+
+{-
+>>> lengthGreaterThan 4 "Too short!" "1234"
+Just "Too short!"
+
+>>> lengthGreaterThan 4 "Too short!" "12345"
+Nothing
+ -}
+lengthGreaterThan :: Int -> err -> Validation err Text
+lengthGreaterThan n err val =
+    if T.length val > n
+        then Nothing
+        else Just err
 
 regexMatch :: Regex -> err -> Validation err Text
-regexMatch regex error_ val =
+regexMatch regex err val =
     if val =~ regex
         then Nothing
-        else Just error_
+        else Just err

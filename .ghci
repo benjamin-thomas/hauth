@@ -1,3 +1,2 @@
-:set +t
 :set prompt "%s> "
 :set prompt-cont "%s| "
