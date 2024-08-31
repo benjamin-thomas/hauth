@@ -9,17 +9,6 @@ common ghc-options
                            -fwrite-ide-info
                            -hiedir=.hie
 
-common lib-depends
-    build-depends:          base ^>=4.17.2.0
-                          , time
-                          , time-lens
-                          , pcre-heavy
-                          , aeson
-                          , template-haskell
-                          , safe-exceptions
-                          , text
-                          , mtl
-
 
 executable exceptional
     import:                 ghc-options
@@ -29,6 +18,19 @@ executable exceptional
                           , safe-exceptions
 
     hs-source-dirs:         other/exceptional
+    default-language:       Haskell2010
+
+executable learn-stm
+    import:                 ghc-options
+    main-is:                Main.hs
+    build-depends:          base ^>=4.17.2.0
+                          , stm
+                          , async
+                          , classy-prelude
+
+    hs-source-dirs:         other/learn-stm
+    other-modules:          WithBase
+                          , WithStmAndAsync
     default-language:       Haskell2010
 
 executable hauth
@@ -41,56 +43,25 @@ executable hauth
     hs-source-dirs:         app
     default-language:       Haskell2010
 
-
-library dev
-    import:                 ghc-options
-                         ,  lib-depends
-
-    hs-source-dirs:         src
-
-    -- Use case: start `cabal repl dev`, then the first exposed module will
-    -- automatically be in scope.
-    --
-    -- So don't put more then one module here.
-    --
-    -- I'm not sure this is buying me much. Normal workflow would be to load the
-    -- library repl as usual, then type `:m + Domain.Authentication`.
-    -- That last command can't be put into a `.ghci` file unfortunately (the
-    -- command is triggered before the module is compiled).
-    -- I do load a smaller number of modules though, so maybe that'd be
-    -- advantageous.
-    --
-    -- Update:
-    -- An advantage to this method is that I can access non-exported functions in GHCi
-    -- However, I **can** in fact access non-exported function by triggering `:load ModuleName`
-    exposed-modules:        Domain.Authentication
-
-    default-language:       Haskell2010
-
-    default-extensions:     OverloadedStrings
-                          , NumericUnderscores
-                          , QuasiQuotes
-
-
 library
     import:                 ghc-options
-                         ,  lib-depends
 
-    -- NOTE: you probably want to access `other-modules` via the test-suite stanza instead.
+    -- NOTE: I can access any module in GHCi with `:load MyModule` or `:load src/MyModule.hs
     exposed-modules:        MyLib
 
     other-modules:          Domain.Authentication
                           , Domain.Validation
 
-    -- build-depends:          base ^>=4.17.2.0
-    --                       , time
-    --                       , time-lens
-    --                       , pcre-heavy
-    --                       , aeson
-    --                       , template-haskell
-    --                       , safe-exceptions
-    --                       , text
-    --                       , mtl
+    build-depends:          base ^>=4.17.2.0
+                          , time
+                          , time-lens
+                          , pcre-heavy
+                          , aeson
+                          , template-haskell
+                          , safe-exceptions
+                          , text
+                          , mtl
+                          , stm
 
     hs-source-dirs:         src
     default-language:       Haskell2010
