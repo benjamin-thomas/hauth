@@ -3,6 +3,7 @@ module Domain.Authentication (
     Auth (..),
     Email,
     mkEmail,
+    rawEmail,
     Password,
     mkPassword,
     rawPassword,
