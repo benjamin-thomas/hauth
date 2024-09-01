@@ -1,8 +1,13 @@
 module Main where
 
-import qualified MyLib (hello)
+import qualified MyLib
 
+{-
+
+cabal run hauth
+
+ -}
 main :: IO ()
 main = do
   putStrLn "Hello, from main!"
-  putStrLn MyLib.hello
+  MyLib.start

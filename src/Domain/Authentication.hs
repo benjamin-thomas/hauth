@@ -21,6 +21,7 @@ module Domain.Authentication (
 
     -- * Ports
     AuthenticationRepo (..),
+    EmailVerificationNotif (..),
     SessionRepo (..),
 
     -- * Use cases
