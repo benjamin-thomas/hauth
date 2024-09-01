@@ -1,6 +1,6 @@
 module Domain.Authentication (
     -- * Types
-    Auth (..),
+    Authentication (..),
     Email,
     mkEmail,
     rawEmail,
@@ -8,13 +8,19 @@ module Domain.Authentication (
     mkPassword,
     rawPassword,
     UserId,
+    mkUserId,
+    unUserId,
     SessionId,
+    mkSessionId,
     EmailValidationError (..),
     PasswordValidationError (..),
     EmailVerificationError (..),
+    RegistrationError (..),
+    VerificationCode,
+    mkVerificationCode,
 
     -- * Ports
-    AuthRepo (..),
+    AuthenticationRepo (..),
     SessionRepo (..),
 
     -- * Use cases
@@ -31,7 +37,7 @@ import qualified Data.Text.IO as TIO
 import Domain.Validation (lengthGreaterThan, regexMatch, validate)
 import Text.Regex.PCRE.Heavy (re)
 
-data Auth = Auth
+data Authentication = Authentication
     { authEmail :: Email
     , authPassword :: Password
     }
@@ -56,7 +62,8 @@ data PasswordValidationError
 
 -- EMAIL
 
-newtype Email = Email {emailRaw :: Text} deriving (Show, Eq)
+newtype Email = Email {emailRaw :: Text}
+    deriving (Show, Eq, Ord)
 
 rawEmail :: Email -> Text
 rawEmail = emailRaw
@@ -105,19 +112,24 @@ mkPassword =
 
 -- RUNTIME AUTHENTICATION
 
-type VerificationCode = Text
+newtype VerificationCode
+    = VerificationCode Text
+    deriving (Show, Eq, Ord)
+
+mkVerificationCode :: Text -> VerificationCode
+mkVerificationCode = VerificationCode
 
 data EmailVerificationError
     = InvalidEmailVerificationCodeError
     deriving (Show, Eq)
 
-class (Monad m) => AuthRepo m where
-    addAuth :: Auth -> m (Either RegistrationError VerificationCode)
+class (Monad m) => AuthenticationRepo m where
+    addAuthentication :: Authentication -> m (Either RegistrationError VerificationCode)
     setEmailAsVerified :: VerificationCode -> m (Either EmailVerificationError ())
-    findUserByAuth :: Auth -> m (Maybe (UserId, Bool)) -- Bool says if the email has been verified
+    findUserIdByAuthentication :: Authentication -> m (Maybe (UserId, Bool)) -- Bool says if the email has been verified
     findEmailFromUserId :: UserId -> m (Maybe Email)
 
-getUser :: (AuthRepo m) => UserId -> m (Maybe Email)
+getUser :: (AuthenticationRepo m) => UserId -> m (Maybe Email)
 getUser = findEmailFromUserId
 
 class (Monad m) => EmailVerificationNotif m where
@@ -133,34 +145,29 @@ Using `ExceptT` allows us to short circuit in case `addAuth` returns a `Left`.
 
 `ExceptT` comes from the `mtl` package.
  -}
-register :: (AuthRepo m, EmailVerificationNotif m) => Auth -> m (Either RegistrationError ())
+register :: (AuthenticationRepo m, EmailVerificationNotif m) => Authentication -> m (Either RegistrationError ())
 register auth = runExceptT $ do
-    vCode <- ExceptT $ addAuth auth
+    vCode <- ExceptT $ addAuthentication auth
     let email = authEmail auth
     lift $ notifyEmailVerification email vCode
 
 -- TEMP IMPLEMENTATIONS
 
-instance AuthRepo IO where
-    addAuth (Auth email _pass) = do
+instance AuthenticationRepo IO where
+    addAuthentication (Authentication email _pass) = do
         TIO.putStrLn $ "adding auth: " <> rawEmail email
-        pure $ Right "fake verification code"
+        pure $ Right (VerificationCode "fake verification code")
     setEmailAsVerified _vCode = do
         pure $ Left InvalidEmailVerificationCodeError
-
-fakeAuth =
-    let Right email = mkEmail "user@example.com"
-        Right password = mkPassword "123456789Ab"
-     in Auth email password
 
 -- verifyCode :: AuthRepo m => VerificationCode -> m (Either EmailVerificationError ())
 -- verifyCode = setEmailAsVerified
 
-verifyEmail :: (AuthRepo m) => VerificationCode -> m (Either EmailVerificationError ())
+verifyEmail :: (AuthenticationRepo m) => VerificationCode -> m (Either EmailVerificationError ())
 verifyEmail = setEmailAsVerified
 
 instance EmailVerificationNotif IO where
-    notifyEmailVerification email vCode =
+    notifyEmailVerification email (VerificationCode vCode) =
         TIO.putStrLn $ "Notify " <> rawEmail email <> " - " <> vCode
 
 {-
@@ -194,19 +201,28 @@ Left InvalidEmailVerificationCodeError
 -}
 
 newtype UserId = UserId Int
+    deriving (Show, Eq)
 
--- newtype UserId = UserId Int
+mkUserId :: Int -> UserId
+mkUserId = UserId
+
+unUserId :: UserId -> Int
+unUserId (UserId n) = n
 
 newtype SessionId = SessionId Text
+    deriving (Show, Eq, Ord)
+
+mkSessionId :: Text -> SessionId
+mkSessionId = SessionId
 
 data LoginError
     = InvalidCredentialsError
     | EmailNotVerifiedError
     deriving (Show, Eq)
 
-login :: (AuthRepo m, SessionRepo m) => Auth -> m (Either LoginError SessionId)
+login :: (AuthenticationRepo m, SessionRepo m) => Authentication -> m (Either LoginError SessionId)
 login auth = runExceptT $ do
-    result <- lift $ findUserByAuth auth
+    result <- lift $ findUserIdByAuthentication auth
     case result of
         Nothing -> throwError InvalidCredentialsError
         Just (_, False) -> throwError EmailNotVerifiedError

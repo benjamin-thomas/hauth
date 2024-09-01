@@ -12,5 +12,7 @@ tmux send-keys -t "$PROJECT_NAME:0" ":reload" Enter
 if [ -z "$1" ]; then
     tmux send-keys -t "$PROJECT_NAME:0" ":main" Enter
 else
-    tmux send-keys -t "$PROJECT_NAME:0" ":main --match \"$1\"" Enter
+    if [ "$1" != "none" ]; then
+        tmux send-keys -t "$PROJECT_NAME:0" ":main --match \"$1\"" Enter
+    fi
 fi
