@@ -20,6 +20,19 @@ executable exceptional
     hs-source-dirs:         other/exceptional
     default-language:       Haskell2010
 
+executable learn-katip
+    import:                 ghc-options
+    main-is:                Main.hs
+    build-depends:          base ^>=4.17.2.0
+                          , katip
+                          , text
+
+    hs-source-dirs:         other/learn-katip
+    other-modules:          Lib
+    default-extensions:     TemplateHaskell
+                          , OverloadedStrings
+    default-language:       Haskell2010
+
 executable learn-stm
     import:                 ghc-options
     main-is:                Main.hs
