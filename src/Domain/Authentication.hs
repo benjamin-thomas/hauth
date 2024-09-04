@@ -34,8 +34,15 @@ module Domain.Authentication (
 
 import Control.Monad.Except (ExceptT (ExceptT), MonadError (throwError), MonadTrans (lift), runExceptT)
 import Data.Text (Text)
-import qualified Data.Text.IO as TIO
 import Domain.Validation (lengthGreaterThan, regexMatch, validate)
+import Katip (
+    KatipContext,
+    Severity (InfoS),
+    katipAddContext,
+    logTM,
+    ls,
+    sl,
+ )
 import Text.Regex.PCRE.Heavy (re)
 
 data Authentication = Authentication
@@ -125,8 +132,8 @@ data EmailVerificationError
     deriving (Show, Eq)
 
 class (Monad m) => AuthenticationRepo m where
-    addAuthentication :: Authentication -> m (Either RegistrationError VerificationCode)
-    setEmailAsVerified :: VerificationCode -> m (Either EmailVerificationError ())
+    addAuthentication :: Authentication -> m (Either RegistrationError (UserId, VerificationCode))
+    setEmailAsVerified :: VerificationCode -> m (Either EmailVerificationError (UserId, Email))
     findUserIdByAuthentication :: Authentication -> m (Maybe (UserId, Bool)) -- Bool says if the email has been verified
     findEmailFromUserId :: UserId -> m (Maybe Email)
 
@@ -140,66 +147,41 @@ class (Monad m) => SessionRepo m where
     newSession :: UserId -> m SessionId
     findUserIdBySessionId :: SessionId -> m (Maybe UserId)
 
+withUserIdContext :: (KatipContext m) => UserId -> m a -> m a
+withUserIdContext (UserId userId) = katipAddContext (sl "userId" userId)
+
 {-
 Using `ExceptT` allows us to short circuit in case `addAuth` returns a `Left`.
 `runExceptT` converts an `ExceptT` int an `Either`.
 
 `ExceptT` comes from the `mtl` package.
  -}
-register :: (AuthenticationRepo m, EmailVerificationNotif m) => Authentication -> m (Either RegistrationError ())
+register ::
+    ( KatipContext m
+    , AuthenticationRepo m
+    , EmailVerificationNotif m
+    ) =>
+    Authentication ->
+    m (Either RegistrationError ())
 register auth = runExceptT $ do
-    vCode <- ExceptT $ addAuthentication auth
+    (userId, vCode) <- ExceptT $ addAuthentication auth
     let email = authEmail auth
     lift $ notifyEmailVerification email vCode
+    withUserIdContext userId $
+        $(logTM) InfoS $
+            ls (rawEmail email) <> " registered successfully"
 
--- TEMP IMPLEMENTATIONS
-
-instance AuthenticationRepo IO where
-    addAuthentication (Authentication email _pass) = do
-        TIO.putStrLn $ "adding auth: " <> rawEmail email
-        pure $ Right (VerificationCode "fake verification code")
-    setEmailAsVerified _vCode = do
-        pure $ Left InvalidEmailVerificationCodeError
-
--- verifyCode :: AuthRepo m => VerificationCode -> m (Either EmailVerificationError ())
--- verifyCode = setEmailAsVerified
-
-verifyEmail :: (AuthenticationRepo m) => VerificationCode -> m (Either EmailVerificationError ())
-verifyEmail = setEmailAsVerified
-
-instance EmailVerificationNotif IO where
-    notifyEmailVerification email (VerificationCode vCode) =
-        TIO.putStrLn $ "Notify " <> rawEmail email <> " - " <> vCode
-
-{-
-Testing temporary impls in the REPL
-
-cabal repl>:l Domain.Authentication
-cabal repl>:l ./src/Domain/Authentication.hs
-
--- copy/paste below
-let Right email = mkEmail "user@example.com"
-let Right password = mkPassword "123456789Ab"
-let auth = Auth email password
-register auth
-verifyEmail $ rawEmail email
-
-\*Domain.Authentication> let Right email = mkEmail "user@example.com"
-\*Domain.Authentication> let Right password = mkPassword "123456789Ab"
-\*Domain.Authentication> let auth = Auth email password
-\*Domain.Authentication> register auth
-adding auth: user@example.com
-Notify user@example.com - fake verification code
-Right ()
-
--- Not implemented yet
-\*Domain.Authentication> verifyEmail "user@example.com"
-Left InvalidEmailVerificationCodeError
-
-\*Domain.Authentication> verifyEmail $ rawEmail email
-Left InvalidEmailVerificationCodeError
-
--}
+verifyEmail ::
+    ( KatipContext m
+    , AuthenticationRepo m
+    ) =>
+    VerificationCode ->
+    m (Either EmailVerificationError ())
+verifyEmail vCode = runExceptT $ do
+    (userId, email) <- ExceptT $ setEmailAsVerified vCode
+    withUserIdContext userId $
+        $(logTM) InfoS $
+            ls (rawEmail email) <> " has been verified successfully"
 
 newtype UserId = UserId Int
     deriving (Show, Eq)
@@ -221,13 +203,24 @@ data LoginError
     | EmailNotVerifiedError
     deriving (Show, Eq)
 
-login :: (AuthenticationRepo m, SessionRepo m) => Authentication -> m (Either LoginError SessionId)
+login ::
+    ( KatipContext m
+    , AuthenticationRepo m
+    , SessionRepo m
+    ) =>
+    Authentication ->
+    m (Either LoginError SessionId)
 login auth = runExceptT $ do
     result <- lift $ findUserIdByAuthentication auth
     case result of
         Nothing -> throwError InvalidCredentialsError
         Just (_, False) -> throwError EmailNotVerifiedError
-        Just (uId, _) -> lift $ newSession uId
+        Just (userId, _) ->
+            withUserIdContext userId . lift $ do
+                sessionId <- newSession userId
+                $(logTM) InfoS $
+                    ls (rawEmail $ authEmail auth) <> " logged in successfully"
+                pure sessionId
 
 resolveSessionId :: (SessionRepo m) => SessionId -> m (Maybe UserId)
 resolveSessionId = findUserIdBySessionId

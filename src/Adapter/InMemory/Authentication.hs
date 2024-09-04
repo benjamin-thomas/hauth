@@ -34,7 +34,7 @@ import qualified Domain.Authentication as D
 import Text.StringRandom (stringRandomIO)
 
 data State = State
-    { stateAuthentications :: [(D.UserId, D.Authentication)]
+    { stateAuthenticationPairs :: [(D.UserId, D.Authentication)]
     , stateUnverifiedEmails :: Map D.VerificationCode D.Email
     , stateVerifiedEmails :: Set D.Email
     , stateUserIdCounter :: Int
@@ -46,7 +46,7 @@ data State = State
 initialState :: State
 initialState =
     State
-        { stateAuthentications = []
+        { stateAuthenticationPairs = []
         , stateUnverifiedEmails = mempty
         , stateVerifiedEmails = mempty
         , stateUserIdCounter = 0
@@ -136,7 +136,7 @@ findEmailFromUserId userId = do
     liftIO $
         fmap
             ( \st ->
-                let findMay = List.find ((== userId) . fst) (stateAuthentications st)
+                let findMay = List.find ((== userId) . fst) (stateAuthenticationPairs st)
                  in (D.authEmail . snd <$> findMay)
             )
             (readTVarIO tvar)
@@ -147,7 +147,7 @@ findUserIdByAuthentication auth = do
     liftIO $
         fmap
             ( \(st :: State) ->
-                let authMay = List.find ((auth ==) . snd) (stateAuthentications st)
+                let authMay = List.find ((auth ==) . snd) (stateAuthenticationPairs st)
                  in setVerified (stateVerifiedEmails st) <$> authMay
             )
             (readTVarIO tvar)
@@ -161,15 +161,25 @@ findUserIdByAuthentication auth = do
                     emails
             )
 
+findUserIdFromAuthenticationPairs ::
+    D.Email ->
+    [(D.UserId, D.Authentication)] ->
+    Maybe D.UserId
+findUserIdFromAuthenticationPairs email lst =
+    fst <$> List.find (\(_, auth) -> D.authEmail auth == email) lst
+
 -- setEmailAsVerified :: VerificationCode -> m (Either EmailVerificationError ())
-setEmailAsVerified :: (InMemory r m) => D.VerificationCode -> m (Either D.EmailVerificationError ())
+setEmailAsVerified ::
+    (InMemory r m) =>
+    D.VerificationCode ->
+    m (Either D.EmailVerificationError (D.UserId, D.Email))
 setEmailAsVerified vCode = do
     tvar <- asks getter
-    liftIO . atomically $ do
-        st <- readTVar tvar
+    liftIO . atomically . runExceptT $ do
+        st <- lift $ readTVar tvar
         case Map.lookup vCode (stateUnverifiedEmails st) of
             Nothing ->
-                pure $ Left D.InvalidEmailVerificationCodeError
+                throwError D.InvalidEmailVerificationCodeError -- 1/2
             Just email -> do
                 let newUnverifiedEmails = Map.delete vCode $ stateUnverifiedEmails st
                     newVerifiedEmails = Set.insert email $ stateVerifiedEmails st
@@ -178,8 +188,15 @@ setEmailAsVerified vCode = do
                             { stateUnverifiedEmails = newUnverifiedEmails
                             , stateVerifiedEmails = newVerifiedEmails
                             }
-                writeTVar tvar newState
-                pure $ Right ()
+
+                userId <-
+                    maybe
+                        (throwError D.InvalidEmailVerificationCodeError) -- 2/2 (should never happen)
+                        pure
+                        (findUserIdFromAuthenticationPairs email (stateAuthenticationPairs st))
+
+                lift $ writeTVar tvar newState
+                pure (userId, email)
 
 -- version from the book
 setEmailAsVerified' :: (InMemory r m) => D.VerificationCode -> m (Either D.EmailVerificationError ())
@@ -204,7 +221,10 @@ setEmailAsVerified' vCode = do
                 lift $ writeTVar tvar newState
 
 -- addAuthentication :: Authentication -> m (Either RegistrationError VerificationCode)
-addAuthentication :: (InMemory r m) => D.Authentication -> m (Either D.RegistrationError D.VerificationCode)
+addAuthentication ::
+    (InMemory r m) =>
+    D.Authentication ->
+    m (Either D.RegistrationError (D.UserId, D.VerificationCode))
 addAuthentication auth = do
     (tvar :: TVar State) <- asks getter
     randStr <- liftIO $ stringRandomIO "[A-Za-z0-9]{16}"
@@ -213,15 +233,15 @@ addAuthentication auth = do
         let authMay =
                 List.find
                     (\x -> D.authEmail auth == D.authEmail x)
-                    (map snd $ stateAuthentications st)
+                    (map snd $ stateAuthenticationPairs st)
         case authMay of
             Just _ ->
                 pure $ Left D.RegistrationErrorEmailTaken
             Nothing -> do
                 let vCode = D.mkVerificationCode randStr
                     newStateUserIdCounter = 1 + stateUserIdCounter st
-                    newAuth = (D.mkUserId newStateUserIdCounter, auth)
-                    newAuthentications = newAuth : stateAuthentications st
+                    (newUserId, newAuthentication) = (D.mkUserId newStateUserIdCounter, auth)
+                    newAuthentications = (newUserId, newAuthentication) : stateAuthenticationPairs st
                     newUnverifiedEmails =
                         Map.insert
                             vCode
@@ -230,11 +250,11 @@ addAuthentication auth = do
                     newState =
                         st
                             { stateUserIdCounter = newStateUserIdCounter
-                            , stateAuthentications = newAuthentications
+                            , stateAuthenticationPairs = newAuthentications
                             , stateUnverifiedEmails = newUnverifiedEmails
                             }
                 writeTVar tvar newState
-                pure $ Right vCode
+                pure $ Right (newUserId, vCode)
 
 -- version from the book
 addAuthentication' :: (InMemory r m) => D.Authentication -> m (Either D.RegistrationError D.VerificationCode)
@@ -243,7 +263,7 @@ addAuthentication' auth = do
     vCode <- liftIO $ D.mkVerificationCode <$> stringRandomIO "[A-Za-z0-9]{16}"
     liftIO . atomically . runExceptT $ do
         st <- lift $ readTVar tvar
-        let authentications = stateAuthentications st
+        let authentications = stateAuthenticationPairs st
             email = D.authEmail auth
             isDuplicate = elem email . map (D.authEmail . snd) $ authentications
         when isDuplicate $ throwError D.RegistrationErrorEmailTaken
@@ -254,13 +274,13 @@ addAuthentication' auth = do
             newState =
                 st
                     { stateUserIdCounter = newUserId
-                    , stateAuthentications = newAuthentications
+                    , stateAuthenticationPairs = newAuthentications
                     , stateUnverifiedEmails = newUnverifiedEmails
                     }
         lift $ writeTVar tvar newState
         pure vCode
 
-testRun :: IO (Either D.RegistrationError D.VerificationCode)
+testRun :: IO (Either D.RegistrationError (D.UserId, D.VerificationCode))
 testRun = do
     s <- newTVarIO initialState
     flip runReaderT s $ addAuthentication auth

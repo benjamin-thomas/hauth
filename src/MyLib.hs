@@ -4,6 +4,7 @@ module MyLib (start) where
 
 import qualified Adapter.InMemory.Authentication as M
 import Control.Concurrent.STM (TVar, newTVarIO)
+import Control.Exception (bracket)
 import Control.Monad.Reader (
     MonadIO (liftIO),
     MonadReader,
@@ -23,12 +24,37 @@ import Domain.Authentication (
     resolveSessionId,
     verifyEmail,
  )
+import Katip (
+    ColorStrategy (ColorIfTerminal),
+    Katip,
+    KatipContext,
+    KatipContextT,
+    LogEnv,
+    Severity (InfoS),
+    Verbosity (V2),
+    closeScribes,
+    defaultScribeSettings,
+    initLogEnv,
+    mkHandleScribe,
+    permitItem,
+    registerScribe,
+    runKatipContextT,
+ )
+import System.IO (stdout)
 
 type State = TVar M.State
 
 newtype App a = App
-    {unApp :: ReaderT State IO a}
-    deriving (Applicative, Functor, Monad, MonadReader State, MonadIO)
+    {unApp :: ReaderT State (KatipContextT IO) a}
+    deriving
+        ( Applicative
+        , Functor
+        , Monad
+        , MonadReader State
+        , MonadIO
+        , KatipContext
+        , Katip
+        )
 
 instance AuthenticationRepo App where
     addAuthentication = M.addAuthentication
@@ -46,8 +72,8 @@ instance SessionRepo App where
 instance MonadFail App where
     fail msg = liftIO (fail msg)
 
-run :: State -> App a -> IO a
-run state = flip runReaderT state . unApp
+run :: LogEnv -> State -> App a -> IO a
+run logEnv state = runKatipContextT logEnv () mempty . flip runReaderT state . unApp
 
 actionsExample :: App ()
 actionsExample = do
@@ -62,7 +88,15 @@ actionsExample = do
     Just registeredEmail <- getUser uId
     liftIO $ print (session, uId, registeredEmail)
 
+withLogEnv :: (LogEnv -> IO a) -> IO a
+withLogEnv = bracket createLogEnv closeScribes
+  where
+    createLogEnv = do
+        logEnv <- initLogEnv "HAuth" "prod"
+        stdoutScribe <- mkHandleScribe ColorIfTerminal stdout (permitItem InfoS) V2
+        registerScribe "stdout" stdoutScribe defaultScribeSettings logEnv
+
 start :: IO ()
-start = do
+start = withLogEnv $ \logEnv -> do
     state <- newTVarIO M.initialState
-    run state actionsExample
+    run logEnv state actionsExample
