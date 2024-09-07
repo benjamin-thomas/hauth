@@ -46,6 +46,21 @@ executable learn-stm
                           , WithStmAndAsync
     default-language:       Haskell2010
 
+executable learn-postgresql-simple
+    import:                 ghc-options
+    main-is:                Main.hs
+    build-depends:          base ^>=4.17.2.0
+                          , postgresql-simple
+                          , resource-pool
+                          , bytestring
+                          , text
+                          , uuid
+
+    hs-source-dirs:         other/learn-postgresql-simple
+    other-modules:          UserRow
+                          , ItemRow
+    default-language:       Haskell2010
+
 executable hauth
     import:                 ghc-options
     main-is:                Main.hs

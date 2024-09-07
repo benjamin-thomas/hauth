@@ -7,12 +7,9 @@ PROJECT_NAME="hauth"
 echo "$(date): reloading the REPL..."
 
 # This assumes the REPL is started in the first pane
-tmux send-keys -t "$PROJECT_NAME:0" ":reload" Enter
+# I must always clear THEN reload. That allows me to always see compilation errors.
 tmux send-keys -t "$PROJECT_NAME:0" ":!clear" Enter
-if [ -z "$1" ]; then
-    tmux send-keys -t "$PROJECT_NAME:0" ":main" Enter
-else
-    if [ "$1" != "none" ]; then
-        tmux send-keys -t "$PROJECT_NAME:0" "$1" Enter
-    fi
+tmux send-keys -t "$PROJECT_NAME:0" ":reload" Enter
+if [ -n "$1" ]; then
+    tmux send-keys -t "$PROJECT_NAME:0" "$1" Enter
 fi
