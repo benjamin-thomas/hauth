@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Main where
@@ -15,10 +16,20 @@ import Data.Functor.Contravariant (
     (>$<),
  )
 import Data.Vector (Vector)
-import Hasql.Connection
-import Hasql.Session
-import ItemRow
-import UserRow
+import Hasql.Connection (Connection, ConnectionError, acquire)
+import Hasql.Session (QueryError)
+import ItemRow (
+    ItemRow,
+    createItemsTable,
+    doInsertItems,
+    doSearchItems2,
+ )
+import UserRow (
+    UserRow,
+    createUsersTable,
+    doInsertUsers,
+    listUsers,
+ )
 
 isEven :: Predicate Int
 isEven = Predicate even
@@ -54,22 +65,22 @@ itemsWork = do
     () <- createItemsTable conn `orStop` TableCreationError
     n <- doInsertItems conn `orStop` InsertItemsErr
     liftIO $ putStrLn $ "[itemsWork] Inserted " <> show n <> " items"
-    doSearchItems2 conn `orStop` FetchItemsErr
+    doSearchItems2 ["hammer", "chair"] conn `orStop` FetchItemsErr
 
 main :: IO ()
 main =
     do
         putStrLn "---"
-        p "A1" (getPredicate (contramap length isEven) "abc")
-        p "B1" (getPredicate (contramap length isEven) "abcd")
+        p "A1" (getPredicate (contramap length isEven) ("abc" :: String))
+        p "B1" (getPredicate (contramap length isEven) ("abcd" :: String))
 
         putStrLn "---"
-        p "A2" (getPredicate (length >$< isEven) "abc")
-        p "B2" (getPredicate (length >$< isEven) "abcd")
+        p "A2" (getPredicate (length >$< isEven) ("abc" :: String))
+        p "B2" (getPredicate (length >$< isEven) ("abcd" :: String))
 
         putStrLn "---"
-        p "A3" (even . length $ "abc")
-        p "B3" (even . length $ "abcd")
+        p "A3" (even . length $ ("abc" :: String))
+        p "B3" (even . length $ ("abcd" :: String))
 
         putStrLn ""
         putStrLn "~~~~~~~~~~~~~~~~~~~~~~~~~~"
