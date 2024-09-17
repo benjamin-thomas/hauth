@@ -59,6 +59,16 @@ usersWork = do
     liftIO $ putStrLn $ "[usersWork] Inserted " <> show n <> " users"
     listUsers conn `orStop` FetchUsersErr
 
+-- "Simplified" version, in the sense that I just return the QueryError, I don't
+-- use my own error type
+-- To do that, I have to require a Connection.
+usersWork2 :: (MonadError QueryError m, MonadIO m) => Connection -> m [UserRow]
+usersWork2 conn = do
+    () <- liftEither =<< liftIO (createUsersTable conn)
+    n <- liftEither =<< liftIO (doInsertUsers conn)
+    liftIO $ putStrLn $ "[usersWork] Inserted " <> show n <> " users"
+    liftEither =<< liftIO (listUsers conn)
+
 itemsWork :: (MonadError AppError m, MonadIO m) => m (Vector ItemRow)
 itemsWork = do
     conn <- getConnection `orStop` ConnErr
@@ -107,3 +117,23 @@ main =
         putStrLn "DONE!"
   where
     p x v = putStrLn $ x <> ": " <> show v
+
+{-
+
+To play with a function requiring a connection, use:
+
+ghci> getConnection >>= either (fail . show) (runExceptT . usersWork2)
+
+ -}
+main2 :: IO ()
+main2 = do
+    res1 <- getConnection
+    case res1 of
+        Left err -> putStrLn $ "[main2] Error: " <> show err
+        Right conn -> do
+            res2 <- runExceptT $ usersWork2 conn
+            case res2 of
+                Left err -> putStrLn $ "[usersWork2] Error: " <> show err
+                Right users -> do
+                    putStrLn "[usersWork2] Success!"
+                    mapM_ print users
