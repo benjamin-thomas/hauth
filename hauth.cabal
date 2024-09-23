@@ -82,6 +82,18 @@ executable learn-hasql
                           , ItemRow
     default-language:       Haskell2010
 
+executable learn-mtl
+    import:                 ghc-options
+    main-is:                Main.hs
+    build-depends:          base ^>=4.17.2.0
+                          , mtl
+                          , data-has
+                          , text
+
+    hs-source-dirs:         other/learn-mtl
+    -- other-modules:
+    default-language:       Haskell2010
+
 executable hauth
     import:                 ghc-options
     main-is:                Main.hs

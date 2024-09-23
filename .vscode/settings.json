@@ -2,5 +2,6 @@
     "cSpell.words": [
         "hauth",
         "libpcre"
-    ]
+    ],
+    "sarif-viewer.connectToGithubCodeScanning": "off"
 }
