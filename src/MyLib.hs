@@ -75,10 +75,11 @@ instance MonadFail App where
 run :: LogEnv -> State -> App a -> IO a
 run logEnv state = runKatipContextT logEnv () mempty . flip runReaderT state . unApp
 
+{- HLINT ignore "Avoid restricted function" -}
 actionsExample :: App ()
 actionsExample = do
-    let Right email = mkEmail "user@example.com"
-        Right password = mkPassword "Hello!123456"
+    let email = either (error "Invalid email") id $ mkEmail "user@example.com"
+        password = either (error "Invalid password") id $ mkPassword "Hello!123456"
         auth = Authentication email password
     void $ register auth
     Just vCode <- M.getNotificationsForEmail email

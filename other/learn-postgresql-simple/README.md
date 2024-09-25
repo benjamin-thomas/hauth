@@ -1,6 +1,9 @@
 Setup
 
 ```sh
+# Step 0: grant user privileges to create extensions
+# postgres=# GRANT CREATE ON DATABASE hauth TO benjamin;
+
  # Step 1: create a local db
 postgres@dev:~$ createdb hauth
 

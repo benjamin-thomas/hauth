@@ -22,14 +22,16 @@ import Control.Monad.Except (
     when,
  )
 import Control.Monad.Reader (MonadReader, ReaderT (runReaderT), asks)
-import Data.Bifunctor (second)
+import Data.Bifunctor (first, second)
 import Data.Has (Has (getter))
 import qualified Data.List as List
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Text (Text)
 import qualified Data.Text as T
+import Domain.Authentication (Authentication)
 import qualified Domain.Authentication as D
 import Text.StringRandom (stringRandomIO)
 
@@ -227,10 +229,12 @@ addAuthentication ::
     m (Either D.RegistrationError (D.UserId, D.VerificationCode))
 addAuthentication auth = do
     (tvar :: TVar State) <- asks getter
-    randStr <- liftIO $ stringRandomIO "[A-Za-z0-9]{16}"
+    vCode <- liftIO $ D.mkVerificationCode <$> stringRandomIO "[A-Za-z0-9]{16}"
     liftIO . atomically $ do
+        -- I could use `runExceptT` here, like in the book, but it doesn't bring much...
         st <- readTVar tvar
-        let authMay =
+        let authMay :: Maybe Authentication
+            authMay =
                 List.find
                     (\x -> D.authEmail auth == D.authEmail x)
                     (map snd $ stateAuthenticationPairs st)
@@ -238,8 +242,7 @@ addAuthentication auth = do
             Just _ ->
                 pure $ Left D.RegistrationErrorEmailTaken
             Nothing -> do
-                let vCode = D.mkVerificationCode randStr
-                    newStateUserIdCounter = 1 + stateUserIdCounter st
+                let newStateUserIdCounter = 1 + stateUserIdCounter st
                     (newUserId, newAuthentication) = (D.mkUserId newStateUserIdCounter, auth)
                     newAuthentications = (newUserId, newAuthentication) : stateAuthenticationPairs st
                     newUnverifiedEmails =
@@ -280,15 +283,21 @@ addAuthentication' auth = do
         lift $ writeTVar tvar newState
         pure vCode
 
+{- HLINT ignore "Avoid restricted function" -}
 testRun :: IO (Either D.RegistrationError (D.UserId, D.VerificationCode))
 testRun = do
     s <- newTVarIO initialState
     flip runReaderT s $ addAuthentication auth
   where
+    auth :: Authentication
     auth =
-        let Right email = D.mkEmail "user@example.com"
-            Right password = D.mkPassword "Hello!123456"
-         in D.Authentication email password
+        -- `Bifunctor.first` is "mapError"
+        either (error . show) id $
+            D.Authentication
+                <$> first (const badEmail) (D.mkEmail "user@example.com")
+                <*> first (const badPassword) (D.mkPassword "Hello!123456")
+      where
+        (badEmail, badPassword) = ("Bad email", "Bad password") :: (Text, Text)
 
 {- FOURMOLU_DISABLE -}
 {-

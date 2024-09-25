@@ -7,7 +7,7 @@ module Domain.Authentication (
     Password,
     mkPassword,
     rawPassword,
-    UserId,
+    UserId(..),
     mkUserId,
     unUserId,
     SessionId,
@@ -16,7 +16,7 @@ module Domain.Authentication (
     PasswordValidationError (..),
     EmailVerificationError (..),
     RegistrationError (..),
-    VerificationCode,
+    VerificationCode (..),
     mkVerificationCode,
 
     -- * Ports

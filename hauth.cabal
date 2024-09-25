@@ -113,8 +113,10 @@ library
     other-modules:          Domain.Authentication
                           , Domain.Validation
                           , Adapter.InMemory.Authentication
+                          , Adapter.PostgreSQL_Simple.Authentication
 
     build-depends:          base ^>=4.17.2.0
+                          , bytestring
                           , time
                           , time-lens
                           , pcre-heavy
@@ -128,6 +130,8 @@ library
                           , data-has
                           , string-random
                           , katip
+                          , resource-pool
+                          , postgresql-simple
 
     hs-source-dirs:         src
     default-language:       Haskell2010
