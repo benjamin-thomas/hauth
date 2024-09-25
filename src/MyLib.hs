@@ -3,8 +3,11 @@
 module MyLib (start) where
 
 import qualified Adapter.InMemory.Authentication as M
+import qualified Adapter.PostgreSQL_Simple.Authentication as PG
+
 import Control.Concurrent.STM (TVar, newTVarIO)
-import Control.Exception (bracket)
+
+import Control.Exception.Safe
 import Control.Monad.Reader (
     MonadIO (liftIO),
     MonadReader,
@@ -42,7 +45,7 @@ import Katip (
  )
 import System.IO (stdout)
 
-type State = TVar M.State
+type State = (PG.State, TVar M.State)
 
 newtype App a = App
     {unApp :: ReaderT State (KatipContextT IO) a}
@@ -51,16 +54,17 @@ newtype App a = App
         , Functor
         , Monad
         , MonadReader State
+        , MonadThrow
         , MonadIO
         , KatipContext
         , Katip
         )
 
 instance AuthenticationRepo App where
-    addAuthentication = M.addAuthentication
-    setEmailAsVerified = M.setEmailAsVerified
+    addAuthentication = PG.addAuthentication
+    setEmailAsVerified = PG.setEmailAsVerified
     findUserIdByAuthentication = M.findUserIdByAuthentication
-    findEmailFromUserId = M.findEmailFromUserId
+    findEmailFromUserId = PG.findEmailFromUserId
 
 instance EmailVerificationNotif App where
     notifyEmailVerification = M.notifyEmailVerification
@@ -100,4 +104,5 @@ withLogEnv = bracket createLogEnv closeScribes
 start :: IO ()
 start = withLogEnv $ \logEnv -> do
     state <- newTVarIO M.initialState
-    run logEnv state actionsExample
+    poolConn <- PG.initialState PG.devPoolCfg
+    run logEnv (poolConn, state) actionsExample

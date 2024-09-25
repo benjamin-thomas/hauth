@@ -17,6 +17,6 @@ CREATE TABLE users (
   email CITEXT NOT NULL UNIQUE CHECK (TRIM(email) <> '' AND LENGTH(email) < 100) UNIQUE,
   pw_hash CHAR(60) NOT NULL UNIQUE,
   verification_code VARCHAR(255) NOT NULL UNIQUE,
-  verified_at TIMESTAMP WITH TIME ZONE NULL CHECK (verified_at < current_timestamp), -- TODO: test with `<=` and `<`
+  verified_at TIMESTAMP WITH TIME ZONE NULL CHECK (verified_at <= current_timestamp),
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp
 );
