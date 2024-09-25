@@ -1,23 +1,21 @@
 module Domain.Authentication (
     -- * Types
     Authentication (..),
+    UserId (..),
+    SessionId (..),
+    EmailValidationError (..),
+    PasswordValidationError (..),
+    EmailVerificationError (..),
+    RegistrationError (..),
+    VerificationCode (..),
+
+    -- * Types and their special constructors
     Email,
     mkEmail,
     rawEmail,
     Password,
     mkPassword,
     rawPassword,
-    UserId(..),
-    mkUserId,
-    unUserId,
-    SessionId,
-    mkSessionId,
-    EmailValidationError (..),
-    PasswordValidationError (..),
-    EmailVerificationError (..),
-    RegistrationError (..),
-    VerificationCode (..),
-    mkVerificationCode,
 
     -- * Ports
     AuthenticationRepo (..),
@@ -121,11 +119,8 @@ mkPassword =
 -- RUNTIME AUTHENTICATION
 
 newtype VerificationCode
-    = VerificationCode Text
+    = MkVerificationCode Text
     deriving (Show, Eq, Ord)
-
-mkVerificationCode :: Text -> VerificationCode
-mkVerificationCode = VerificationCode
 
 data EmailVerificationError
     = InvalidEmailVerificationCodeError
@@ -148,7 +143,7 @@ class (Monad m) => SessionRepo m where
     findUserIdBySessionId :: SessionId -> m (Maybe UserId)
 
 withUserIdContext :: (KatipContext m) => UserId -> m a -> m a
-withUserIdContext (UserId userId) = katipAddContext (sl "userId" userId)
+withUserIdContext (MkUserId userId) = katipAddContext (sl "userId" userId)
 
 {-
 Using `ExceptT` allows us to short circuit in case `addAuth` returns a `Left`.
@@ -183,20 +178,11 @@ verifyEmail vCode = runExceptT $ do
         $(logTM) InfoS $
             ls (rawEmail email) <> " has been verified successfully"
 
-newtype UserId = UserId Int
+newtype UserId = MkUserId Int
     deriving (Show, Eq)
 
-mkUserId :: Int -> UserId
-mkUserId = UserId
-
-unUserId :: UserId -> Int
-unUserId (UserId n) = n
-
-newtype SessionId = SessionId Text
+newtype SessionId = MkSessionId Text
     deriving (Show, Eq, Ord)
-
-mkSessionId :: Text -> SessionId
-mkSessionId = SessionId
 
 data LoginError
     = InvalidCredentialsError

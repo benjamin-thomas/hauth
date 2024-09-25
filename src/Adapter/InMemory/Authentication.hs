@@ -72,11 +72,11 @@ findUserIdBySessionId sessionId = do
             (readTVarIO tvar)
 
 newSessionId :: D.UserId -> IO D.SessionId
-newSessionId userId = do
-    let userId' = T.pack . show $ D.unUserId userId
+newSessionId (D.MkUserId userId) = do
+    let userId' = T.pack . show $ userId
     fmap
         ( \randStr ->
-            D.mkSessionId $
+            D.MkSessionId $
                 mconcat
                     [ userId'
                     , "::"
@@ -229,7 +229,7 @@ addAuthentication ::
     m (Either D.RegistrationError (D.UserId, D.VerificationCode))
 addAuthentication auth = do
     (tvar :: TVar State) <- asks getter
-    vCode <- liftIO $ D.mkVerificationCode <$> stringRandomIO "[A-Za-z0-9]{16}"
+    vCode <- liftIO $ D.MkVerificationCode <$> stringRandomIO "[A-Za-z0-9]{16}"
     liftIO . atomically $ do
         -- I could use `runExceptT` here, like in the book, but it doesn't bring much...
         st <- readTVar tvar
@@ -243,7 +243,7 @@ addAuthentication auth = do
                 pure $ Left D.RegistrationErrorEmailTaken
             Nothing -> do
                 let newStateUserIdCounter = 1 + stateUserIdCounter st
-                    (newUserId, newAuthentication) = (D.mkUserId newStateUserIdCounter, auth)
+                    (newUserId, newAuthentication) = (D.MkUserId newStateUserIdCounter, auth)
                     newAuthentications = (newUserId, newAuthentication) : stateAuthenticationPairs st
                     newUnverifiedEmails =
                         Map.insert
@@ -263,7 +263,7 @@ addAuthentication auth = do
 addAuthentication' :: (InMemory r m) => D.Authentication -> m (Either D.RegistrationError D.VerificationCode)
 addAuthentication' auth = do
     tvar <- asks getter
-    vCode <- liftIO $ D.mkVerificationCode <$> stringRandomIO "[A-Za-z0-9]{16}"
+    vCode <- liftIO $ D.MkVerificationCode <$> stringRandomIO "[A-Za-z0-9]{16}"
     liftIO . atomically . runExceptT $ do
         st <- lift $ readTVar tvar
         let authentications = stateAuthenticationPairs st
@@ -271,7 +271,7 @@ addAuthentication' auth = do
             isDuplicate = elem email . map (D.authEmail . snd) $ authentications
         when isDuplicate $ throwError D.RegistrationErrorEmailTaken
         let newUserId = stateUserIdCounter st + 1
-            newAuthentications = (D.mkUserId newUserId, auth) : authentications
+            newAuthentications = (D.MkUserId newUserId, auth) : authentications
             unverifiedEmails = stateUnverifiedEmails st
             newUnverifiedEmails = Map.insert vCode email unverifiedEmails
             newState =

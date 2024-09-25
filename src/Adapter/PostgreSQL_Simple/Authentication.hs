@@ -82,12 +82,12 @@ addAuthentication (D.Authentication email password) = do
     let rawEmail = D.rawEmail email
         rawPassword = D.rawPassword password
     rawVCode <- liftIO $ stringRandomIO "[A-Za-z0-9]{64}"
-    let vCode = D.mkVerificationCode rawVCode
+    let vCode = D.MkVerificationCode rawVCode
     result <- withConn $ \conn ->
         try $ query conn insertUserQuery (rawEmail, rawPassword, rawVCode)
     case result of
         Right [Only userId] -> do
-            let userId' = D.mkUserId userId
+            let userId' = D.MkUserId userId
             pure $ Right (userId', vCode)
         Right _ -> throwString "Should never happen: postgres did not return a single user id"
         Left err@SqlError{sqlErrorMsg = msg} ->
@@ -112,14 +112,14 @@ addAuthentication (D.Authentication email password) = do
         |]
 
 setEmailAsVerified :: (PG r m) => D.VerificationCode -> m (Either D.EmailVerificationError (D.UserId, D.Email))
-setEmailAsVerified (D.VerificationCode rawVCode) = do
+setEmailAsVerified (D.MkVerificationCode rawVCode) = do
     result <- withConn $ \conn ->
         try $ query conn setEmailAsVerifiedQuery (Only rawVCode)
     case result of
         Left _err@SqlError{sqlErrorMsg = _} -> throwString "todo1"
         Right [(userId, userEmail)] -> do
             userEmail' <- unsafeMkEmail userEmail
-            let userId' = D.mkUserId userId
+            let userId' = D.MkUserId userId
             pure $ Right (userId', userEmail')
         Right _ -> throwString "todo2"
   where
