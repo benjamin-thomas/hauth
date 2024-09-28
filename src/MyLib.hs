@@ -7,13 +7,13 @@ import qualified Adapter.PostgreSQL_Simple.Authentication as PG
 
 import Control.Concurrent.STM (TVar, newTVarIO)
 
-import Control.Exception.Safe
+import Control.Exception.Safe (MonadThrow, bracket)
 import Control.Monad.Reader (
     MonadIO (liftIO),
     MonadReader,
     ReaderT (runReaderT),
+    void,
  )
-import Control.Monad.State (void)
 import Domain.Authentication (
     Authentication (Authentication),
     AuthenticationRepo (..),
@@ -45,15 +45,15 @@ import Katip (
  )
 import System.IO (stdout)
 
-type State = (PG.State, TVar M.State)
+type AppState = (PG.State, TVar M.State)
 
 newtype App a = App
-    {unApp :: ReaderT State (KatipContextT IO) a}
+    {unApp :: ReaderT AppState (KatipContextT IO) a}
     deriving
         ( Applicative
         , Functor
         , Monad
-        , MonadReader State
+        , MonadReader AppState
         , MonadThrow
         , MonadIO
         , KatipContext
@@ -76,8 +76,8 @@ instance SessionRepo App where
 instance MonadFail App where
     fail msg = liftIO (fail msg)
 
-run :: LogEnv -> State -> App a -> IO a
-run logEnv state = runKatipContextT logEnv () mempty . flip runReaderT state . unApp
+run :: LogEnv -> AppState -> App a -> IO a
+run logEnv appState = runKatipContextT logEnv () mempty . flip runReaderT appState . unApp
 
 {- HLINT ignore "Avoid restricted function" -}
 actionsExample :: App ()
@@ -86,12 +86,16 @@ actionsExample = do
         password = either (error "Invalid password") id $ mkPassword "Hello!123456"
         auth = Authentication email password
     void $ register auth
-    Just vCode <- M.getNotificationsForEmail email
+    Just vCode <- M.getNotificationsForEmail email -- FIXME! memory impl is not in syn with pg impl
     void $ verifyEmail vCode
-    Right session <- login auth
-    Just uId <- resolveSessionId session
-    Just registeredEmail <- getUser uId
-    liftIO $ print (session, uId, registeredEmail)
+    loginResult <- login auth
+    case loginResult of
+        Left x -> liftIO . putStrLn $ "Failed to login: " <> show x
+        Right sessionId -> do
+            Just uId <- resolveSessionId sessionId
+            Just registeredEmail <- getUser uId
+            liftIO $ putStrLn "Logged in successfully"
+            liftIO $ print (sessionId, uId, registeredEmail)
 
 withLogEnv :: (LogEnv -> IO a) -> IO a
 withLogEnv = bracket createLogEnv closeScribes
@@ -103,6 +107,6 @@ withLogEnv = bracket createLogEnv closeScribes
 
 start :: IO ()
 start = withLogEnv $ \logEnv -> do
-    state <- newTVarIO M.initialState
+    authState <- newTVarIO M.initialState
     poolConn <- PG.initialState PG.devPoolCfg
-    run logEnv (poolConn, state) actionsExample
+    run logEnv (poolConn, authState) actionsExample
