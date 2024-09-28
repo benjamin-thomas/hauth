@@ -94,6 +94,16 @@ executable learn-mtl
     -- other-modules:
     default-language:       Haskell2010
 
+executable learn-hedis
+    import:                 ghc-options
+    main-is:                Main.hs
+    build-depends:          base ^>=4.17.2.0
+                          , hedis
+
+    hs-source-dirs:         other/learn-hedis
+    -- other-modules:
+    default-language:       Haskell2010
+
 executable hauth
     import:                 ghc-options
     main-is:                Main.hs
