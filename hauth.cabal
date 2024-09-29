@@ -2,7 +2,6 @@ cabal-version:              2.4
 name:                       hauth
 version:                    0.1.0.0
 
-
 common ghc-options
     ghc-options:           -Wall
                            -freverse-errors
@@ -105,7 +104,12 @@ executable learn-hedis
     default-language:       Haskell2010
 
 executable hauth
+    -- To debug a crashing program, do the following:
+    --   cabal build exe:hauth --enable-profiling --ghc-options="-fprof-auto -rtsopts -with-rtsopts=-xc"
+    --   $(cabal list-bin exe:hauth)
+    -- NOTE: only binaries may output stack traces
     import:                 ghc-options
+
     main-is:                Main.hs
 
     build-depends:          base ^>=4.17.2.0
@@ -123,6 +127,7 @@ library
     other-modules:          Domain.Authentication
                           , Domain.Validation
                           , Adapter.InMemory.Authentication
+                          , Adapter.Redis.Authentication
                           , Adapter.PostgreSQL_Simple.Authentication
 
     build-depends:          base ^>=4.17.2.0
@@ -142,6 +147,7 @@ library
                           , katip
                           , resource-pool
                           , postgresql-simple
+                          , hedis
 
     hs-source-dirs:         src
     default-language:       Haskell2010
