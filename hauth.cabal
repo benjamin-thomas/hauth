@@ -103,6 +103,18 @@ executable learn-hedis
     -- other-modules:
     default-language:       Haskell2010
 
+executable learn-amqp
+    import:                 ghc-options
+    main-is:                Main.hs
+    build-depends:          base ^>=4.17.2.0
+                          , amqp
+                          , text
+                          , bytestring
+
+    hs-source-dirs:         other/learn-amqp
+    -- other-modules:
+    default-language:       Haskell2010
+
 executable hauth
     -- To debug a crashing program, do the following:
     --   cabal build exe:hauth --enable-profiling --ghc-options="-fprof-auto -rtsopts -with-rtsopts=-xc"
